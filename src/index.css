@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-headline: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-primary: #003fe5;
+  --color-primary-container: #335cff;
+  --color-on-primary: #ffffff;
+  
+  --color-surface: #fbf8ff;
+  --color-on-surface: #1a1b24;
+  --color-on-surface-variant: #434656;
+  
+  --color-surface-container-low: #f3f2ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-highest: #e2e1ef;
+  
+  --color-secondary-container: #d0e1fb;
+  --color-on-secondary-container: #0b1c30;
+  
+  --color-tertiary-container: #007e56;
+  --color-on-tertiary-container: #c5ffde;
+  
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  
+  --color-outline: #747688;
+  --color-outline-variant: #c4c5d9;
+
+  --radius-xl: 1.5rem;
+  --radius-md: 0.75rem;
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-on-surface font-body antialiased;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/80 backdrop-blur-xl;
+  }
+  
+  .glass-dark {
+    @apply bg-slate-950/80 backdrop-blur-xl;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
