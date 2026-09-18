@@ -1,11 +1,13 @@
 import React from 'react';
-import { CheckCircle2, Clock, Bolt, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Clock, Bolt, ArrowRight, Check } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 import { Task, Screen } from '@/src/types';
 import { useTasks } from '@/src/context/TasksContext';
 import { isToday, parseISO, compareAsc } from 'date-fns';
 import { CATEGORY_LABELS, STATUS_LABELS, pluralizeTasks } from '@/src/lib/labels';
+import EditTaskModal from './EditTaskModal';
+import TaskActionsMenu from './TaskActionsMenu';
 
 interface DashboardProps {
   onScreenChange?: (screen: Screen) => void;
@@ -24,7 +26,8 @@ const CATEGORY_COLORS: Record<Task['category'], string> = {
 };
 
 export default function Dashboard({ onScreenChange }: DashboardProps) {
-  const { tasks } = useTasks();
+  const { tasks, toggleTaskStatus, deleteTask } = useTasks();
+  const [editingTask, setEditingTask] = React.useState<Task | null>(null);
 
   const completed = tasks.filter((t) => t.status === 'Completed');
   const inProgress = tasks.filter((t) => t.status === 'In Progress');
@@ -116,7 +119,13 @@ export default function Dashboard({ onScreenChange }: DashboardProps) {
               <p className="text-on-surface-variant text-sm">На горизонте пусто — можно выдохнуть.</p>
             )}
             {upcoming.map((task) => (
-              <DeadlineCard key={task.id} task={task} />
+              <DeadlineCard
+                key={task.id}
+                task={task}
+                onToggle={toggleTaskStatus}
+                onDelete={deleteTask}
+                onEdit={setEditingTask}
+              />
             ))}
           </div>
         </div>
@@ -140,6 +149,8 @@ export default function Dashboard({ onScreenChange }: DashboardProps) {
           </div>
         </div>
       </div>
+
+      {editingTask && <EditTaskModal task={editingTask} onClose={() => setEditingTask(null)} />}
     </div>
   );
 }
@@ -183,28 +194,58 @@ function StatCard({ label, value, total, icon, className, children, dark = false
   );
 }
 
-function DeadlineCard({ task }: { task: Task }) {
+function DeadlineCard({
+  task,
+  onToggle,
+  onDelete,
+  onEdit,
+}: {
+  task: Task;
+  onToggle: (id: string) => void;
+  onDelete: (id: string) => void;
+  onEdit: (task: Task) => void;
+}) {
+  const isCompleted = task.status === 'Completed';
   return (
     <div className="bg-surface-container-lowest p-6 rounded-xl flex items-center gap-6 group hover:bg-surface-container-low transition-colors">
-      <div
+      <button
+        onClick={() => onToggle(task.id)}
+        aria-label={isCompleted ? 'Отметить как ожидающую' : 'Отметить как выполненную'}
         className={cn(
-          'flex flex-col items-center justify-center w-14 h-14 rounded-xl shrink-0',
-          task.priority === 'High'
-            ? 'bg-error-container text-on-error-container'
-            : 'bg-surface-container-highest text-on-surface-variant'
+          'flex flex-col items-center justify-center w-14 h-14 rounded-xl shrink-0 transition-all',
+          isCompleted
+            ? 'bg-tertiary-container text-on-tertiary-container'
+            : task.priority === 'High'
+              ? 'bg-error-container text-on-error-container'
+              : 'bg-surface-container-highest text-on-surface-variant'
         )}
       >
-        <span className="text-base font-bold">{task.time ?? '—'}</span>
-      </div>
+        {isCompleted ? (
+          <Check size={22} strokeWidth={3} />
+        ) : (
+          <span className="text-base font-bold">{task.time ?? '—'}</span>
+        )}
+      </button>
       <div className="flex-grow">
-        <h4 className="font-bold text-lg text-on-surface">{task.title}</h4>
+        <h4 className={cn('font-bold text-lg text-on-surface', isCompleted && 'line-through')}>{task.title}</h4>
         <p className="text-on-surface-variant text-sm">{task.tags.join(', ') || CATEGORY_LABELS[task.category]}</p>
       </div>
-      {task.status === 'In Progress' && (
-        <span className="bg-tertiary-container text-on-tertiary-container px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tight">
-          {STATUS_LABELS['In Progress']}
+      {isCompleted ? (
+        <span className="bg-tertiary-container text-on-tertiary-container px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tight shrink-0">
+          {STATUS_LABELS.Completed}
         </span>
+      ) : (
+        task.status === 'In Progress' && (
+          <span className="bg-tertiary-container text-on-tertiary-container px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tight shrink-0">
+            {STATUS_LABELS['In Progress']}
+          </span>
+        )
       )}
+      <TaskActionsMenu
+        className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0"
+        onEdit={() => onEdit(task)}
+        onDelete={() => onDelete(task.id)}
+      />
     </div>
   );
 }

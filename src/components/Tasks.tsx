@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, MoreVertical, Check, Trash2, Pencil } from 'lucide-react';
+import { Search, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 import { Task } from '@/src/types';
@@ -8,6 +8,7 @@ import { format, isToday, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { PRIORITY_LABELS, STATUS_LABELS } from '@/src/lib/labels';
 import EditTaskModal from './EditTaskModal';
+import TaskActionsMenu from './TaskActionsMenu';
 
 const FILTERS = [
   { id: 'all', label: 'Все' },
@@ -119,7 +120,6 @@ function TaskItem({
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
 }) {
-  const [menuOpen, setMenuOpen] = React.useState(false);
   const isCompleted = task.status === 'Completed';
   const due = isToday(parseISO(task.dueDate)) ? 'Сегодня' : format(parseISO(task.dueDate), 'd MMM', { locale: ru });
 
@@ -193,37 +193,11 @@ function TaskItem({
           ))}
         </div>
       </div>
-      <div className="relative opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-        <button
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-label="Действия с задачей"
-          className="p-2 text-outline hover:text-on-surface"
-        >
-          <MoreVertical size={20} />
-        </button>
-        {menuOpen && (
-          <div className="absolute right-0 top-full mt-1 bg-surface-container-lowest shadow-lg rounded-lg overflow-hidden z-10 border border-surface-container-highest">
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                onEdit(task);
-              }}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-low whitespace-nowrap w-full"
-            >
-              <Pencil size={14} /> Редактировать
-            </button>
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                onDelete(task.id);
-              }}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-on-error-container hover:bg-error-container whitespace-nowrap w-full"
-            >
-              <Trash2 size={14} /> Удалить
-            </button>
-          </div>
-        )}
-      </div>
+      <TaskActionsMenu
+        className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
+        onEdit={() => onEdit(task)}
+        onDelete={() => onDelete(task.id)}
+      />
     </motion.div>
   );
 }

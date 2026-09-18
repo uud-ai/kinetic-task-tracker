@@ -17,6 +17,8 @@ import { ru } from 'date-fns/locale';
 import { Task, Screen } from '@/src/types';
 import { useTasks } from '@/src/context/TasksContext';
 import { CATEGORY_LABELS, PRIORITY_LABELS, STATUS_LABELS, pluralizeTasks } from '@/src/lib/labels';
+import EditTaskModal from './EditTaskModal';
+import TaskActionsMenu from './TaskActionsMenu';
 
 interface CalendarProps {
   onScreenChange?: (screen: Screen) => void;
@@ -29,10 +31,11 @@ const CATEGORY_DOT: Record<Task['category'], string> = {
 };
 
 export default function Calendar({ onScreenChange }: CalendarProps) {
-  const { tasks, toggleTaskStatus } = useTasks();
+  const { tasks, toggleTaskStatus, deleteTask } = useTasks();
   const today = new Date();
   const [currentDate, setCurrentDate] = React.useState(today);
   const [selectedDate, setSelectedDate] = React.useState(today);
+  const [editingTask, setEditingTask] = React.useState<Task | null>(null);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
@@ -139,7 +142,13 @@ export default function Calendar({ onScreenChange }: CalendarProps) {
               <p className="text-on-surface-variant text-sm px-2">На этот день ничего не запланировано.</p>
             )}
             {agenda.map((task) => (
-              <AgendaItem key={task.id} task={task} onToggle={toggleTaskStatus} />
+              <AgendaItem
+                key={task.id}
+                task={task}
+                onToggle={toggleTaskStatus}
+                onDelete={deleteTask}
+                onEdit={setEditingTask}
+              />
             ))}
           </div>
 
@@ -151,6 +160,8 @@ export default function Calendar({ onScreenChange }: CalendarProps) {
           </button>
         </div>
       </div>
+
+      {editingTask && <EditTaskModal task={editingTask} onClose={() => setEditingTask(null)} />}
     </div>
   );
 }
@@ -164,12 +175,22 @@ function LegendItem({ color, label }: { color: string; label: string }) {
   );
 }
 
-function AgendaItem({ task, onToggle }: { task: Task; onToggle: (id: string) => void }) {
+function AgendaItem({
+  task,
+  onToggle,
+  onDelete,
+  onEdit,
+}: {
+  task: Task;
+  onToggle: (id: string) => void;
+  onDelete: (id: string) => void;
+  onEdit: (task: Task) => void;
+}) {
   const completed = task.status === 'Completed';
   return (
     <div
       className={cn(
-        'p-6 bg-surface-container-low rounded-[1.5rem] transition-all hover:bg-surface-container-lowest group cursor-pointer',
+        'p-6 bg-surface-container-low rounded-[1.5rem] transition-all hover:bg-surface-container-lowest group',
         completed && 'opacity-60 grayscale'
       )}
     >
@@ -184,23 +205,30 @@ function AgendaItem({ task, onToggle }: { task: Task; onToggle: (id: string) => 
             <div className="w-5 h-5 rounded-full border-2 border-outline group-hover:border-primary transition-colors" />
           )}
         </button>
-        {!completed && (
-          <div
-            className={cn(
-              'px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tighter',
-              task.priority === 'High'
-                ? 'bg-error-container text-on-error-container'
-                : 'bg-primary-container text-on-primary'
-            )}
-          >
-            {PRIORITY_LABELS[task.priority]}
-          </div>
-        )}
-        {completed && (
-          <div className="px-2 py-0.5 rounded-full bg-tertiary-container text-on-tertiary-container text-[9px] font-bold uppercase tracking-tighter">
-            {STATUS_LABELS.Completed}
-          </div>
-        )}
+        <div className="flex items-center gap-1">
+          {!completed && (
+            <div
+              className={cn(
+                'px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tighter',
+                task.priority === 'High'
+                  ? 'bg-error-container text-on-error-container'
+                  : 'bg-primary-container text-on-primary'
+              )}
+            >
+              {PRIORITY_LABELS[task.priority]}
+            </div>
+          )}
+          {completed && (
+            <div className="px-2 py-0.5 rounded-full bg-tertiary-container text-on-tertiary-container text-[9px] font-bold uppercase tracking-tighter">
+              {STATUS_LABELS.Completed}
+            </div>
+          )}
+          <TaskActionsMenu
+            className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
+            onEdit={() => onEdit(task)}
+            onDelete={() => onDelete(task.id)}
+          />
+        </div>
       </div>
       <h3 className={cn('font-headline font-bold text-lg mb-1', completed && 'line-through')}>{task.title}</h3>
       {task.description && (
