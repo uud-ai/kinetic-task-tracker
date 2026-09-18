@@ -1,7 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import { resetMockTasks } from '@/src/test/supabaseMock';
 import { TasksProvider, useTasks, NewTask } from './TasksContext';
+
+vi.mock('@/src/lib/supabase', () => import('@/src/test/supabaseMock'));
+vi.mock('@/src/context/AuthContext', () => import('@/src/test/authMock'));
 
 const wrapper = ({ children }: { children: ReactNode }) => <TasksProvider>{children}</TasksProvider>;
 
@@ -15,71 +19,80 @@ const baseTask: NewTask = {
 };
 
 beforeEach(() => {
-  localStorage.clear();
+  resetMockTasks();
 });
 
 describe('TasksContext', () => {
-  it('добавляет задачу со сгенерированным id и статусом Pending по умолчанию', () => {
+  it('добавляет задачу со сгенерированным id и статусом Pending по умолчанию', async () => {
     const { result } = renderHook(() => useTasks(), { wrapper });
-    const before = result.current.tasks.length;
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
-    act(() => {
-      result.current.addTask(baseTask);
+    await act(async () => {
+      await result.current.addTask(baseTask);
     });
 
-    expect(result.current.tasks).toHaveLength(before + 1);
+    expect(result.current.tasks).toHaveLength(1);
     const created = result.current.tasks.find((t) => t.title === 'Тестовая задача');
     expect(created).toMatchObject({ title: 'Тестовая задача', status: 'Pending' });
     expect(created?.id).toBeTruthy();
   });
 
-  it('переключает статус задачи между Pending и Completed', () => {
+  it('переключает статус задачи между Pending и Completed', async () => {
     const { result } = renderHook(() => useTasks(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
     let created;
-    act(() => {
-      created = result.current.addTask(baseTask);
+    await act(async () => {
+      created = await result.current.addTask(baseTask);
     });
 
-    act(() => {
-      result.current.toggleTaskStatus(created!.id);
+    await act(async () => {
+      await result.current.toggleTaskStatus(created!.id);
     });
     expect(result.current.tasks.find((t) => t.id === created!.id)?.status).toBe('Completed');
 
-    act(() => {
-      result.current.toggleTaskStatus(created!.id);
+    await act(async () => {
+      await result.current.toggleTaskStatus(created!.id);
     });
     expect(result.current.tasks.find((t) => t.id === created!.id)?.status).toBe('Pending');
   });
 
-  it('удаляет задачу', () => {
+  it('удаляет задачу', async () => {
     const { result } = renderHook(() => useTasks(), { wrapper });
-    const before = result.current.tasks.length;
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
     let created;
-    act(() => {
-      created = result.current.addTask(baseTask);
+    await act(async () => {
+      created = await result.current.addTask(baseTask);
     });
-    expect(result.current.tasks).toHaveLength(before + 1);
+    expect(result.current.tasks).toHaveLength(1);
 
-    act(() => {
-      result.current.deleteTask(created!.id);
+    await act(async () => {
+      await result.current.deleteTask(created!.id);
     });
-    expect(result.current.tasks).toHaveLength(before);
+    expect(result.current.tasks).toHaveLength(0);
     expect(result.current.tasks.find((t) => t.id === created!.id)).toBeUndefined();
   });
 
-  it('сохраняет задачи в localStorage', () => {
+  it('загружает существующие задачи пользователя при монтировании', async () => {
+    resetMockTasks([
+      {
+        user_id: 'test-user-id',
+        title: 'Уже существующая задача',
+        description: '',
+        priority: 'Low',
+        status: 'Pending',
+        due_date: '2024-01-01',
+        tags: [],
+        category: 'Personal',
+        time: null,
+      },
+    ]);
+
     const { result } = renderHook(() => useTasks(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
-    let created;
-    act(() => {
-      created = result.current.addTask(baseTask);
-    });
-
-    const stored = JSON.parse(localStorage.getItem('kinetic-tasks') ?? '[]');
-    const persisted = stored.find((t: { id: string }) => t.id === created!.id);
-    expect(persisted).toBeTruthy();
-    expect(persisted.title).toBe('Тестовая задача');
+    expect(result.current.tasks).toHaveLength(1);
+    expect(result.current.tasks[0].title).toBe('Уже существующая задача');
   });
 });

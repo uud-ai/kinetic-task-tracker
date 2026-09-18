@@ -1,8 +1,9 @@
 import React from 'react';
-import { LayoutDashboard, ListTodo, PlusCircle, Calendar as CalendarIcon, Search, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, ListTodo, PlusCircle, Calendar as CalendarIcon, Search, Sun, Moon, LogOut } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Screen } from '@/src/types';
 import { useTheme } from '@/src/lib/useTheme';
+import { useAuth } from '@/src/context/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,6 +13,7 @@ interface LayoutProps {
 
 export default function Layout({ children, currentScreen, onScreenChange }: LayoutProps) {
   const { theme, toggleTheme } = useTheme();
+  const { user, signOut } = useAuth();
   const navItems = [
     { id: 'dashboard', label: 'Обзор', icon: LayoutDashboard },
     { id: 'tasks', label: 'Задачи', icon: ListTodo },
@@ -50,6 +52,14 @@ export default function Layout({ children, currentScreen, onScreenChange }: Layo
           </button>
           <button aria-label="Поиск" className="p-2 text-outline hover:bg-surface-container-low rounded-full transition-colors">
             <Search size={20} />
+          </button>
+          <button
+            onClick={() => signOut()}
+            aria-label={user?.email ? `Выйти из аккаунта ${user.email}` : 'Выйти из аккаунта'}
+            title={user?.email ?? undefined}
+            className="p-2 text-outline hover:bg-surface-container-low rounded-full transition-colors"
+          >
+            <LogOut size={20} />
           </button>
         </div>
       </header>

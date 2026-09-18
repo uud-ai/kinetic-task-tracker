@@ -31,21 +31,27 @@ export default function CreateTask({ onCreated }: CreateTaskProps) {
     setTagDraft('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       setError('Дайте задаче название перед созданием.');
       return;
     }
 
-    const task = addTask({
-      title: title.trim(),
-      description: description.trim(),
-      priority,
-      dueDate,
-      tags,
-      category,
-    });
+    let task: Task;
+    try {
+      task = await addTask({
+        title: title.trim(),
+        description: description.trim(),
+        priority,
+        dueDate,
+        tags,
+        category,
+      });
+    } catch {
+      setError('Не удалось создать задачу. Проверьте подключение и попробуйте снова.');
+      return;
+    }
 
     setTitle('');
     setDescription('');
