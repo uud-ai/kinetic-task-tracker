@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, MoreVertical, Check, Trash2 } from 'lucide-react';
+import { Search, MoreVertical, Check, Trash2, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 import { Task } from '@/src/types';
@@ -7,6 +7,7 @@ import { useTasks } from '@/src/context/TasksContext';
 import { format, isToday, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { PRIORITY_LABELS, STATUS_LABELS } from '@/src/lib/labels';
+import EditTaskModal from './EditTaskModal';
 
 const FILTERS = [
   { id: 'all', label: 'Все' },
@@ -20,6 +21,7 @@ export default function Tasks() {
   const { tasks, toggleTaskStatus, deleteTask } = useTasks();
   const [activeFilter, setActiveFilter] = React.useState<FilterId>('all');
   const [query, setQuery] = React.useState('');
+  const [editingTask, setEditingTask] = React.useState<Task | null>(null);
 
   const filtered = tasks.filter((task) => {
     if (query && !task.title.toLowerCase().includes(query.toLowerCase())) return false;
@@ -74,7 +76,13 @@ export default function Tasks() {
       <div className="space-y-6">
         <AnimatePresence initial={false}>
           {filtered.map((task) => (
-            <TaskItem key={task.id} task={task} onToggle={toggleTaskStatus} onDelete={deleteTask} />
+            <TaskItem
+              key={task.id}
+              task={task}
+              onToggle={toggleTaskStatus}
+              onDelete={deleteTask}
+              onEdit={setEditingTask}
+            />
           ))}
         </AnimatePresence>
         {filtered.length === 0 && (
@@ -84,6 +92,8 @@ export default function Tasks() {
           </div>
         )}
       </div>
+
+      {editingTask && <EditTaskModal task={editingTask} onClose={() => setEditingTask(null)} />}
     </div>
   );
 }
@@ -92,10 +102,12 @@ function TaskItem({
   task,
   onToggle,
   onDelete,
+  onEdit,
 }: {
   task: Task;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
+  onEdit: (task: Task) => void;
 }) {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const isCompleted = task.status === 'Completed';
@@ -172,9 +184,18 @@ function TaskItem({
             <button
               onClick={() => {
                 setMenuOpen(false);
+                onEdit(task);
+              }}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-low whitespace-nowrap w-full"
+            >
+              <Pencil size={14} /> Редактировать
+            </button>
+            <button
+              onClick={() => {
+                setMenuOpen(false);
                 onDelete(task.id);
               }}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-on-error-container hover:bg-error-container whitespace-nowrap"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-on-error-container hover:bg-error-container whitespace-nowrap w-full"
             >
               <Trash2 size={14} /> Удалить
             </button>

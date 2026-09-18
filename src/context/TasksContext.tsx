@@ -47,12 +47,26 @@ function taskToRow(userId: string, task: NewTask) {
   };
 }
 
+function taskPatchToRow(patch: Partial<NewTask>) {
+  const row: Record<string, unknown> = {};
+  if (patch.title !== undefined) row.title = patch.title;
+  if (patch.description !== undefined) row.description = patch.description;
+  if (patch.priority !== undefined) row.priority = patch.priority;
+  if (patch.status !== undefined) row.status = patch.status;
+  if (patch.dueDate !== undefined) row.due_date = patch.dueDate;
+  if (patch.tags !== undefined) row.tags = patch.tags;
+  if (patch.category !== undefined) row.category = patch.category;
+  if (patch.time !== undefined) row.time = patch.time ?? null;
+  return row;
+}
+
 interface TasksContextValue {
   tasks: Task[];
   loading: boolean;
   error: string | null;
   retry: () => void;
   addTask: (task: NewTask) => Promise<Task>;
+  updateTask: (id: string, patch: Partial<NewTask>) => Promise<void>;
   toggleTaskStatus: (id: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
 }
@@ -136,6 +150,21 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
     [user]
   );
 
+  const updateTask = React.useCallback(
+    async (id: string, patch: Partial<NewTask>) => {
+      const current = tasks.find((t) => t.id === id);
+      if (!current) return;
+      const optimistic: Task = { ...current, ...patch };
+      setTasks((prev) => prev.map((t) => (t.id === id ? optimistic : t)));
+      const { error: updateError } = await supabase.from('tasks').update(taskPatchToRow(patch)).eq('id', id);
+      if (updateError) {
+        setTasks((prev) => prev.map((t) => (t.id === id ? current : t)));
+        throw updateError;
+      }
+    },
+    [tasks]
+  );
+
   const toggleTaskStatus = React.useCallback(
     async (id: string) => {
       const current = tasks.find((t) => t.id === id);
@@ -165,8 +194,8 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = React.useMemo(
-    () => ({ tasks, loading, error, retry, addTask, toggleTaskStatus, deleteTask }),
-    [tasks, loading, error, retry, addTask, toggleTaskStatus, deleteTask]
+    () => ({ tasks, loading, error, retry, addTask, updateTask, toggleTaskStatus, deleteTask }),
+    [tasks, loading, error, retry, addTask, updateTask, toggleTaskStatus, deleteTask]
   );
 
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;

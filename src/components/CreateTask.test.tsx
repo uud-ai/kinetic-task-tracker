@@ -25,7 +25,7 @@ describe('Создание задачи', () => {
     renderCreateTask();
     await act(async () => {});
     fireEvent.click(screen.getByText('Создать задачу'));
-    expect(screen.getByText('Дайте задаче название перед созданием.')).toBeInTheDocument();
+    expect(screen.getByText('Дайте задаче название.')).toBeInTheDocument();
   });
 
   it('создаёт задачу и вызывает onCreated при заполненном названии', async () => {

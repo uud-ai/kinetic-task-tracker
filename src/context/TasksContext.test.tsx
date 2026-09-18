@@ -74,6 +74,23 @@ describe('TasksContext', () => {
     expect(result.current.tasks.find((t) => t.id === created!.id)).toBeUndefined();
   });
 
+  it('обновляет поля задачи', async () => {
+    const { result } = renderHook(() => useTasks(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let created;
+    await act(async () => {
+      created = await result.current.addTask(baseTask);
+    });
+
+    await act(async () => {
+      await result.current.updateTask(created!.id, { title: 'Обновлённое название', priority: 'High' });
+    });
+
+    const updated = result.current.tasks.find((t) => t.id === created!.id);
+    expect(updated).toMatchObject({ title: 'Обновлённое название', priority: 'High' });
+  });
+
   it('загружает существующие задачи пользователя при монтировании', async () => {
     resetMockTasks([
       {

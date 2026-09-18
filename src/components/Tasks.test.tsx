@@ -91,4 +91,19 @@ describe('Экран задач', () => {
 
     await waitFor(() => expect(screen.getAllByLabelText('Действия с задачей')).toHaveLength(before - 1));
   });
+
+  it('редактирует задачу через модальное окно', async () => {
+    await renderTasks();
+
+    fireEvent.click(screen.getAllByLabelText('Действия с задачей')[0]);
+    fireEvent.click(screen.getByText('Редактировать'));
+
+    const titleInput = await screen.findByDisplayValue('Задача высокого приоритета');
+    fireEvent.change(titleInput, { target: { value: 'Обновлённая задача' } });
+    fireEvent.click(screen.getByText('Сохранить изменения'));
+
+    await waitFor(() => expect(screen.getByText('Обновлённая задача')).toBeInTheDocument());
+    expect(screen.queryByText('Задача высокого приоритета')).not.toBeInTheDocument();
+    expect(screen.queryByText('Редактировать задачу')).not.toBeInTheDocument();
+  });
 });
