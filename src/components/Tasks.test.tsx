@@ -107,8 +107,10 @@ describe('Экран задач', () => {
     fireEvent.change(titleInput, { target: { value: 'Обновлённая задача' } });
     fireEvent.click(screen.getByText('Сохранить изменения'));
 
-    await waitFor(() => expect(screen.getByText('Обновлённая задача')).toBeInTheDocument());
+    // Optimistic update lands synchronously, so wait specifically for the
+    // async save to finish and close the modal before asserting on it.
+    await waitFor(() => expect(screen.queryByText('Редактировать задачу')).not.toBeInTheDocument());
+    expect(screen.getByText('Обновлённая задача')).toBeInTheDocument();
     expect(screen.queryByText('Задача высокого приоритета')).not.toBeInTheDocument();
-    expect(screen.queryByText('Редактировать задачу')).not.toBeInTheDocument();
   });
 });
