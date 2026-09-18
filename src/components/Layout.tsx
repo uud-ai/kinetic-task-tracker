@@ -23,7 +23,11 @@ export default function Layout({ children, currentScreen, onScreenChange }: Layo
     <div className="min-h-screen pb-32">
       {/* Header */}
       <header className="fixed top-0 w-full z-50 glass shadow-sm flex justify-between items-center px-6 h-16">
-        <div className="flex items-center gap-3">
+        <button
+          onClick={() => onScreenChange('dashboard')}
+          aria-label="На главную"
+          className="flex items-center gap-3 rounded-md focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
+        >
           <div className="w-10 h-10 rounded-md overflow-hidden bg-surface-container-highest">
             <img
               src="https://picsum.photos/seed/curator/100/100"
@@ -35,7 +39,7 @@ export default function Layout({ children, currentScreen, onScreenChange }: Layo
           <h1 className="text-xl font-extrabold text-primary tracking-tighter font-headline">
             Кинетическое пространство
           </h1>
-        </div>
+        </button>
         <div className="flex items-center gap-1">
           <button
             onClick={toggleTheme}
