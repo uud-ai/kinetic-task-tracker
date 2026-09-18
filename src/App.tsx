@@ -10,6 +10,7 @@ import Tasks from './components/Tasks';
 import CreateTask from './components/CreateTask';
 import Calendar from './components/Calendar';
 import { Screen } from './types';
+import { TasksProvider } from './context/TasksContext';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = React.useState<Screen>('dashboard');
@@ -17,21 +18,23 @@ export default function App() {
   const renderScreen = () => {
     switch (currentScreen) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard onScreenChange={setCurrentScreen} />;
       case 'tasks':
         return <Tasks />;
       case 'create':
-        return <CreateTask />;
+        return <CreateTask onCreated={() => setCurrentScreen('tasks')} />;
       case 'calendar':
-        return <Calendar />;
+        return <Calendar onScreenChange={setCurrentScreen} />;
       default:
-        return <Dashboard />;
+        return <Dashboard onScreenChange={setCurrentScreen} />;
     }
   };
 
   return (
-    <Layout currentScreen={currentScreen} onScreenChange={setCurrentScreen}>
-      {renderScreen()}
-    </Layout>
+    <TasksProvider>
+      <Layout currentScreen={currentScreen} onScreenChange={setCurrentScreen}>
+        {renderScreen()}
+      </Layout>
+    </TasksProvider>
   );
 }
