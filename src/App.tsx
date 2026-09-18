@@ -10,6 +10,7 @@ import Tasks from './components/Tasks';
 import CreateTask from './components/CreateTask';
 import Calendar from './components/Calendar';
 import Login from './components/Login';
+import ResetPassword from './components/ResetPassword';
 import { Screen } from './types';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { TasksProvider } from './context/TasksContext';
@@ -42,7 +43,7 @@ function AuthenticatedApp() {
 }
 
 function Gate() {
-  const { user, initializing } = useAuth();
+  const { user, initializing, passwordRecovery } = useAuth();
 
   if (initializing) {
     return (
@@ -50,6 +51,10 @@ function Gate() {
         Загрузка…
       </div>
     );
+  }
+
+  if (passwordRecovery) {
+    return <ResetPassword />;
   }
 
   return user ? <AuthenticatedApp /> : <Login />;

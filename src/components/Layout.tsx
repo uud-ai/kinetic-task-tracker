@@ -1,9 +1,10 @@
 import React from 'react';
-import { LayoutDashboard, ListTodo, PlusCircle, Calendar as CalendarIcon, Search, Sun, Moon, LogOut } from 'lucide-react';
+import { LayoutDashboard, ListTodo, PlusCircle, Calendar as CalendarIcon, Search, Sun, Moon, LogOut, Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Screen } from '@/src/types';
 import { useTheme } from '@/src/lib/useTheme';
 import { useAuth } from '@/src/context/AuthContext';
+import { useTasks } from '@/src/context/TasksContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -14,6 +15,7 @@ interface LayoutProps {
 export default function Layout({ children, currentScreen, onScreenChange }: LayoutProps) {
   const { theme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
+  const { loading, error, retry } = useTasks();
   const navItems = [
     { id: 'dashboard', label: 'Обзор', icon: LayoutDashboard },
     { id: 'tasks', label: 'Задачи', icon: ListTodo },
@@ -66,6 +68,27 @@ export default function Layout({ children, currentScreen, onScreenChange }: Layo
 
       {/* Main Content */}
       <main className="pt-24 px-6 max-w-5xl mx-auto">
+        {(loading || error) && (
+          <div
+            role="status"
+            className={cn(
+              "mb-6 rounded-xl px-4 py-3 text-sm font-medium flex items-center justify-between gap-3",
+              error
+                ? "bg-error-container text-on-error-container"
+                : "bg-surface-container-low text-on-surface-variant"
+            )}
+          >
+            <span className="flex items-center gap-2">
+              {error ? <AlertTriangle size={16} aria-hidden="true" /> : <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
+              {error ?? 'Синхронизация задач…'}
+            </span>
+            {error && (
+              <button type="button" onClick={retry} className="font-bold underline shrink-0">
+                Повторить
+              </button>
+            )}
+          </div>
+        )}
         {children}
       </main>
 

@@ -5,9 +5,12 @@ import { supabase } from '@/src/lib/supabase';
 interface AuthContextValue {
   user: User | null;
   initializing: boolean;
+  passwordRecovery: boolean;
   signUp: (email: string, password: string) => Promise<{ user: User; sessionActive: boolean }>;
   signIn: (email: string, password: string) => Promise<User>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
 }
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
@@ -15,6 +18,7 @@ const AuthContext = React.createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [initializing, setInitializing] = React.useState(true);
+  const [passwordRecovery, setPasswordRecovery] = React.useState(false);
 
   React.useEffect(() => {
     supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => {
@@ -22,9 +26,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setInitializing(false);
     });
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       setInitializing(false);
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
+      if (event === 'SIGNED_OUT') setPasswordRecovery(false);
     });
 
     return () => subscription.subscription.unsubscribe();
@@ -48,9 +54,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
   }, []);
 
+  const resetPassword = React.useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + import.meta.env.BASE_URL,
+    });
+    if (error) throw error;
+  }, []);
+
+  const updatePassword = React.useCallback(async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+    setPasswordRecovery(false);
+  }, []);
+
   const value = React.useMemo(
-    () => ({ user, initializing, signUp, signIn, signOut }),
-    [user, initializing, signUp, signIn, signOut]
+    () => ({ user, initializing, passwordRecovery, signUp, signIn, signOut, resetPassword, updatePassword }),
+    [user, initializing, passwordRecovery, signUp, signIn, signOut, resetPassword, updatePassword]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

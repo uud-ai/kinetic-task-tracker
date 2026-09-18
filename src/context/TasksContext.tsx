@@ -50,6 +50,8 @@ function taskToRow(userId: string, task: NewTask) {
 interface TasksContextValue {
   tasks: Task[];
   loading: boolean;
+  error: string | null;
+  retry: () => void;
   addTask: (task: NewTask) => Promise<Task>;
   toggleTaskStatus: (id: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
@@ -61,24 +63,34 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [tasks, setTasks] = React.useState<Task[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [retryToken, setRetryToken] = React.useState(0);
+
+  const retry = React.useCallback(() => setRetryToken((n) => n + 1), []);
 
   React.useEffect(() => {
     if (!user) {
       setTasks([]);
       setLoading(false);
+      setError(null);
       return;
     }
 
     let cancelled = false;
     setLoading(true);
+    setError(null);
 
     supabase
       .from('tasks')
       .select('*')
       .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
+      .then(({ data, error: fetchError }) => {
         if (cancelled) return;
-        if (!error && data) setTasks((data as TaskRow[]).map(rowToTask));
+        if (fetchError) {
+          setError('Не удалось загрузить задачи. Проверьте подключение.');
+        } else if (data) {
+          setTasks((data as TaskRow[]).map(rowToTask));
+        }
         setLoading(false);
       });
 
@@ -106,7 +118,7 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, retryToken]);
 
   const addTask = React.useCallback(
     async (task: NewTask): Promise<Task> => {
@@ -130,9 +142,10 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
       if (!current) return;
       const nextStatus: Task['status'] = current.status === 'Completed' ? 'Pending' : 'Completed';
       setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: nextStatus } : t)));
-      const { error } = await supabase.from('tasks').update({ status: nextStatus }).eq('id', id);
-      if (error) {
+      const { error: updateError } = await supabase.from('tasks').update({ status: nextStatus }).eq('id', id);
+      if (updateError) {
         setTasks((prev) => prev.map((t) => (t.id === id ? current : t)));
+        setError('Не удалось сохранить изменения. Проверьте подключение.');
       }
     },
     [tasks]
@@ -142,17 +155,18 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
     async (id: string) => {
       const removed = tasks.find((t) => t.id === id);
       setTasks((prev) => prev.filter((t) => t.id !== id));
-      const { error } = await supabase.from('tasks').delete().eq('id', id);
-      if (error && removed) {
+      const { error: deleteError } = await supabase.from('tasks').delete().eq('id', id);
+      if (deleteError && removed) {
         setTasks((prev) => (prev.some((t) => t.id === id) ? prev : [removed, ...prev]));
+        setError('Не удалось удалить задачу. Проверьте подключение.');
       }
     },
     [tasks]
   );
 
   const value = React.useMemo(
-    () => ({ tasks, loading, addTask, toggleTaskStatus, deleteTask }),
-    [tasks, loading, addTask, toggleTaskStatus, deleteTask]
+    () => ({ tasks, loading, error, retry, addTask, toggleTaskStatus, deleteTask }),
+    [tasks, loading, error, retry, addTask, toggleTaskStatus, deleteTask]
   );
 
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;

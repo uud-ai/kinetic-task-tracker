@@ -1,23 +1,48 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { LogIn, UserPlus, Mail, Lock } from 'lucide-react';
+import { LogIn, UserPlus, Mail, Lock, KeyRound } from 'lucide-react';
 import { useAuth } from '@/src/context/AuthContext';
 import { getAuthErrorMessage } from '@/src/lib/labels';
 import { seedInitialTasks } from '@/src/context/TasksContext';
 
+type Mode = 'signIn' | 'signUp' | 'forgotPassword';
+
 export default function Login() {
-  const { signIn, signUp } = useAuth();
-  const [mode, setMode] = React.useState<'signIn' | 'signUp'>('signIn');
+  const { signIn, signUp, resetPassword } = useAuth();
+  const [mode, setMode] = React.useState<Mode>('signIn');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState('');
   const [info, setInfo] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
 
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    setError('');
+    setInfo('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setInfo('');
+
+    if (mode === 'forgotPassword') {
+      if (!email.trim()) {
+        setError('Введите email, на который зарегистрирован аккаунт.');
+        return;
+      }
+      setSubmitting(true);
+      try {
+        await resetPassword(email.trim());
+        setInfo('Если такой аккаунт существует, мы отправили на него ссылку для сброса пароля.');
+      } catch (err) {
+        setError(getAuthErrorMessage(err));
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
 
     if (!email.trim() || !password) {
       setError('Заполните email и пароль.');
@@ -43,6 +68,13 @@ export default function Login() {
     }
   };
 
+  const heading =
+    mode === 'signIn'
+      ? 'Войдите, чтобы синхронизировать задачи между устройствами'
+      : mode === 'signUp'
+        ? 'Создайте аккаунт для синхронизации задач'
+        : 'Введите email, чтобы сбросить пароль';
+
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
       <motion.div
@@ -54,9 +86,7 @@ export default function Login() {
           <h1 className="font-headline font-extrabold text-3xl text-primary tracking-tight">
             Кинетическое пространство
           </h1>
-          <p className="text-on-surface-variant">
-            {mode === 'signIn' ? 'Войдите, чтобы синхронизировать задачи между устройствами' : 'Создайте аккаунт для синхронизации задач'}
-          </p>
+          <p className="text-on-surface-variant">{heading}</p>
         </header>
 
         <form className="space-y-5" onSubmit={handleSubmit}>
@@ -77,22 +107,35 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant ml-1">Пароль</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-outline">
-                <Lock size={18} />
+          {mode !== 'forgotPassword' && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between ml-1">
+                <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Пароль</label>
+                {mode === 'signIn' && (
+                  <button
+                    type="button"
+                    onClick={() => switchMode('forgotPassword')}
+                    className="text-xs font-bold text-primary hover:underline"
+                  >
+                    Забыли пароль?
+                  </button>
+                )}
               </div>
-              <input
-                className="w-full bg-surface-container-low border-none rounded-xl py-4 pl-12 pr-4 text-on-surface focus:ring-2 focus:ring-primary/10 focus:bg-surface-container-lowest transition-all font-medium"
-                type="password"
-                autoComplete={mode === 'signIn' ? 'current-password' : 'new-password'}
-                placeholder="Не менее 6 символов"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <div className="relative">
+                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-outline">
+                  <Lock size={18} />
+                </div>
+                <input
+                  className="w-full bg-surface-container-low border-none rounded-xl py-4 pl-12 pr-4 text-on-surface focus:ring-2 focus:ring-primary/10 focus:bg-surface-container-lowest transition-all font-medium"
+                  type="password"
+                  autoComplete={mode === 'signIn' ? 'current-password' : 'new-password'}
+                  placeholder="Не менее 6 символов"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {error && <p className="text-on-error-container text-sm font-medium ml-1">{error}</p>}
           {info && <p className="text-primary text-sm font-medium ml-1">{info}</p>}
@@ -102,24 +145,34 @@ export default function Login() {
             disabled={submitting}
             className="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary font-headline font-bold py-4 rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 active:scale-[0.98] transition-all duration-200 text-lg flex items-center justify-center gap-3 disabled:opacity-60 disabled:pointer-events-none"
           >
-            {mode === 'signIn' ? <LogIn size={22} /> : <UserPlus size={22} />}
-            {submitting ? 'Подождите…' : mode === 'signIn' ? 'Войти' : 'Зарегистрироваться'}
+            {mode === 'signIn' ? <LogIn size={22} /> : mode === 'signUp' ? <UserPlus size={22} /> : <KeyRound size={22} />}
+            {submitting
+              ? 'Подождите…'
+              : mode === 'signIn'
+                ? 'Войти'
+                : mode === 'signUp'
+                  ? 'Зарегистрироваться'
+                  : 'Отправить ссылку для сброса'}
           </button>
         </form>
 
         <p className="text-center text-sm text-on-surface-variant">
-          {mode === 'signIn' ? 'Ещё нет аккаунта? ' : 'Уже есть аккаунт? '}
-          <button
-            type="button"
-            onClick={() => {
-              setMode(mode === 'signIn' ? 'signUp' : 'signIn');
-              setError('');
-              setInfo('');
-            }}
-            className="text-primary font-bold hover:underline"
-          >
-            {mode === 'signIn' ? 'Зарегистрироваться' : 'Войти'}
-          </button>
+          {mode === 'forgotPassword' ? (
+            <button type="button" onClick={() => switchMode('signIn')} className="text-primary font-bold hover:underline">
+              Вернуться ко входу
+            </button>
+          ) : (
+            <>
+              {mode === 'signIn' ? 'Ещё нет аккаунта? ' : 'Уже есть аккаунт? '}
+              <button
+                type="button"
+                onClick={() => switchMode(mode === 'signIn' ? 'signUp' : 'signIn')}
+                className="text-primary font-bold hover:underline"
+              >
+                {mode === 'signIn' ? 'Зарегистрироваться' : 'Войти'}
+              </button>
+            </>
+          )}
         </p>
       </motion.div>
     </div>
