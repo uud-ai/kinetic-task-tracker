@@ -47,6 +47,27 @@ function taskToRow(userId: string, task: NewTask) {
   };
 }
 
+function tasksCacheKey(userId: string) {
+  return `kinetic-tasks-cache-${userId}`;
+}
+
+function readTasksCache(userId: string): Task[] | null {
+  try {
+    const raw = localStorage.getItem(tasksCacheKey(userId));
+    return raw ? (JSON.parse(raw) as Task[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeTasksCache(userId: string, tasks: Task[]) {
+  try {
+    localStorage.setItem(tasksCacheKey(userId), JSON.stringify(tasks));
+  } catch {
+    // localStorage may be unavailable (private browsing, storage quota) — cache is best-effort
+  }
+}
+
 function taskPatchToRow(patch: Partial<NewTask>) {
   const row: Record<string, unknown> = {};
   if (patch.title !== undefined) row.title = patch.title;
@@ -101,7 +122,12 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
       .then(({ data, error: fetchError }) => {
         if (cancelled) return;
         if (fetchError) {
-          setError('Не удалось загрузить задачи. Проверьте подключение.');
+          const cached = readTasksCache(user.id);
+          if (cached) {
+            setTasks(cached);
+          } else {
+            setError('Не удалось загрузить задачи. Проверьте подключение.');
+          }
         } else if (data) {
           setTasks((data as TaskRow[]).map(rowToTask));
         }
@@ -133,6 +159,10 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
       supabase.removeChannel(channel);
     };
   }, [user, retryToken]);
+
+  React.useEffect(() => {
+    if (user && !loading) writeTasksCache(user.id, tasks);
+  }, [user, loading, tasks]);
 
   const addTask = React.useCallback(
     async (task: NewTask): Promise<Task> => {
