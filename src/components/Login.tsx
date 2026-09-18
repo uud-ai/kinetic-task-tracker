@@ -56,7 +56,9 @@ export default function Login() {
         if (sessionActive) {
           await seedInitialTasks(user.id);
         } else {
-          setInfo('Проверьте почту — мы отправили письмо для подтверждения email. Стартовые задачи появятся после первого входа.');
+          setInfo(
+            'Проверьте почту — мы отправили письмо для подтверждения email. Стартовые задачи появятся после первого входа.'
+          );
         }
       } else {
         await signIn(email.trim(), password);
@@ -77,11 +79,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md space-y-10"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md space-y-10">
         <header className="text-center space-y-3">
           <h1 className="font-headline font-extrabold text-3xl text-primary tracking-tight">
             Кинетическое пространство
@@ -145,7 +143,13 @@ export default function Login() {
             disabled={submitting}
             className="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary font-headline font-bold py-4 rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 active:scale-[0.98] transition-all duration-200 text-lg flex items-center justify-center gap-3 disabled:opacity-60 disabled:pointer-events-none"
           >
-            {mode === 'signIn' ? <LogIn size={22} /> : mode === 'signUp' ? <UserPlus size={22} /> : <KeyRound size={22} />}
+            {mode === 'signIn' ? (
+              <LogIn size={22} />
+            ) : mode === 'signUp' ? (
+              <UserPlus size={22} />
+            ) : (
+              <KeyRound size={22} />
+            )}
             {submitting
               ? 'Подождите…'
               : mode === 'signIn'
@@ -158,7 +162,11 @@ export default function Login() {
 
         <p className="text-center text-sm text-on-surface-variant">
           {mode === 'forgotPassword' ? (
-            <button type="button" onClick={() => switchMode('signIn')} className="text-primary font-bold hover:underline">
+            <button
+              type="button"
+              onClick={() => switchMode('signIn')}
+              className="text-primary font-bold hover:underline"
+            >
               Вернуться ко входу
             </button>
           ) : (

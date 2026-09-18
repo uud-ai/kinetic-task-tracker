@@ -1,5 +1,16 @@
 import React from 'react';
-import { LayoutDashboard, ListTodo, PlusCircle, Calendar as CalendarIcon, Search, Sun, Moon, LogOut, Loader2, AlertTriangle } from 'lucide-react';
+import {
+  LayoutDashboard,
+  ListTodo,
+  PlusCircle,
+  Calendar as CalendarIcon,
+  Search,
+  Sun,
+  Moon,
+  LogOut,
+  Loader2,
+  AlertTriangle,
+} from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Screen } from '@/src/types';
 import { useTheme } from '@/src/lib/useTheme';
@@ -10,9 +21,10 @@ interface LayoutProps {
   children: React.ReactNode;
   currentScreen: Screen;
   onScreenChange: (screen: Screen) => void;
+  onSearchClick: () => void;
 }
 
-export default function Layout({ children, currentScreen, onScreenChange }: LayoutProps) {
+export default function Layout({ children, currentScreen, onScreenChange, onSearchClick }: LayoutProps) {
   const { theme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
   const { loading, error, retry } = useTasks();
@@ -52,7 +64,11 @@ export default function Layout({ children, currentScreen, onScreenChange }: Layo
           >
             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
           </button>
-          <button aria-label="Поиск" className="p-2 text-outline hover:bg-surface-container-low rounded-full transition-colors">
+          <button
+            onClick={onSearchClick}
+            aria-label="Поиск по задачам"
+            className="p-2 text-outline hover:bg-surface-container-low rounded-full transition-colors"
+          >
             <Search size={20} />
           </button>
           <button
@@ -72,14 +88,16 @@ export default function Layout({ children, currentScreen, onScreenChange }: Layo
           <div
             role="status"
             className={cn(
-              "mb-6 rounded-xl px-4 py-3 text-sm font-medium flex items-center justify-between gap-3",
-              error
-                ? "bg-error-container text-on-error-container"
-                : "bg-surface-container-low text-on-surface-variant"
+              'mb-6 rounded-xl px-4 py-3 text-sm font-medium flex items-center justify-between gap-3',
+              error ? 'bg-error-container text-on-error-container' : 'bg-surface-container-low text-on-surface-variant'
             )}
           >
             <span className="flex items-center gap-2">
-              {error ? <AlertTriangle size={16} aria-hidden="true" /> : <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
+              {error ? (
+                <AlertTriangle size={16} aria-hidden="true" />
+              ) : (
+                <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+              )}
               {error ?? 'Синхронизация задач…'}
             </span>
             {error && (
@@ -102,16 +120,12 @@ export default function Layout({ children, currentScreen, onScreenChange }: Layo
               key={item.id}
               onClick={() => onScreenChange(item.id)}
               className={cn(
-                "flex flex-col items-center justify-center p-2 transition-all duration-300 active:scale-90",
-                isActive 
-                  ? "text-primary bg-primary/5 rounded-2xl px-5" 
-                  : "text-outline hover:text-primary"
+                'flex flex-col items-center justify-center p-2 transition-all duration-300 active:scale-90',
+                isActive ? 'text-primary bg-primary/5 rounded-2xl px-5' : 'text-outline hover:text-primary'
               )}
             >
               <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-[10px] font-bold uppercase tracking-widest mt-1.5">
-                {item.label}
-              </span>
+              <span className="text-[10px] font-bold uppercase tracking-widest mt-1.5">{item.label}</span>
             </button>
           );
         })}

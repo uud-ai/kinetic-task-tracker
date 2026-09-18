@@ -63,7 +63,8 @@ export default function Dashboard({ onScreenChange }: DashboardProps) {
           transition={{ delay: 0.1 }}
           className="text-on-surface-variant font-medium text-lg"
         >
-          Ваше пространство гармонизировано. На сегодня осталось {pendingToday.length} {pluralizeTasks(pendingToday.length)}.
+          Ваше пространство гармонизировано. На сегодня осталось {pendingToday.length}{' '}
+          {pluralizeTasks(pendingToday.length)}.
         </motion.p>
       </section>
 
@@ -84,16 +85,12 @@ export default function Dashboard({ onScreenChange }: DashboardProps) {
           className="bg-primary text-white"
           dark
         />
-        <StatCard
-          label="Фокус дня"
-          icon={<Bolt className="text-primary" />}
-          className="bg-surface-container-highest"
-        >
+        <StatCard label="Фокус дня" icon={<Bolt className="text-primary" />} className="bg-surface-container-highest">
           <div className="w-full bg-surface-container-low h-2 rounded-full mb-4 overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${velocity}%` }}
-              transition={{ duration: 1, ease: "easeOut" }}
+              transition={{ duration: 1, ease: 'easeOut' }}
               className="bg-primary h-full"
             />
           </div>
@@ -161,18 +158,25 @@ function StatCard({ label, value, total, icon, className, children, dark = false
   return (
     <motion.div
       whileHover={{ y: -4 }}
-      className={cn("p-8 rounded-xl flex flex-col justify-between h-48 transition-all", className)}
+      className={cn('p-8 rounded-xl flex flex-col justify-between h-48 transition-all', className)}
     >
       <div className="flex justify-between items-start">
-        <span className={cn("font-bold text-[10px] uppercase tracking-widest", dark ? "text-white/70" : "text-on-surface-variant")}>
+        <span
+          className={cn(
+            'font-bold text-[10px] uppercase tracking-widest',
+            dark ? 'text-white/70' : 'text-on-surface-variant'
+          )}
+        >
           {label}
         </span>
         {icon}
       </div>
-      {children ? children : (
+      {children ? (
+        children
+      ) : (
         <div className="flex items-baseline gap-2">
           <span className="text-5xl font-headline font-bold">{value}</span>
-          <span className={cn("font-medium text-sm", dark ? "text-white/60" : "text-on-surface-variant")}>{total}</span>
+          <span className={cn('font-medium text-sm', dark ? 'text-white/60' : 'text-on-surface-variant')}>{total}</span>
         </div>
       )}
     </motion.div>
@@ -182,10 +186,14 @@ function StatCard({ label, value, total, icon, className, children, dark = false
 function DeadlineCard({ task }: { task: Task }) {
   return (
     <div className="bg-surface-container-lowest p-6 rounded-xl flex items-center gap-6 group hover:bg-surface-container-low transition-colors">
-      <div className={cn(
-        "flex flex-col items-center justify-center w-14 h-14 rounded-xl shrink-0",
-        task.priority === 'High' ? "bg-error-container text-on-error-container" : "bg-surface-container-highest text-on-surface-variant"
-      )}>
+      <div
+        className={cn(
+          'flex flex-col items-center justify-center w-14 h-14 rounded-xl shrink-0',
+          task.priority === 'High'
+            ? 'bg-error-container text-on-error-container'
+            : 'bg-surface-container-highest text-on-surface-variant'
+        )}
+      >
         <span className="text-base font-bold">{task.time ?? '—'}</span>
       </div>
       <div className="flex-grow">
@@ -213,7 +221,7 @@ function CollectionItem({ label, count, color, image }: CollectionItemProps) {
     <div className="group cursor-pointer">
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-center gap-3">
-          <div className={cn("w-2 h-2 rounded-full", color)}></div>
+          <div className={cn('w-2 h-2 rounded-full', color)}></div>
           <span className="font-bold text-on-surface">{label}</span>
         </div>
         <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">{count}</span>

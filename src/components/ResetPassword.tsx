@@ -38,11 +38,7 @@ export default function ResetPassword() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md space-y-10"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md space-y-10">
         <header className="text-center space-y-3">
           <h1 className="font-headline font-extrabold text-3xl text-primary tracking-tight">Новый пароль</h1>
           <p className="text-on-surface-variant">Придумайте новый пароль для входа в аккаунт</p>

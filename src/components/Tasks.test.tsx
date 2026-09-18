@@ -10,9 +10,16 @@ import { resetMockTasks } from '@/src/test/supabaseMock';
 // so filtered/deleted tasks disappear from the DOM immediately in tests.
 vi.mock('motion/react', () => ({
   motion: {
-    div: ({ children, initial: _initial, animate: _animate, exit: _exit, transition: _transition, layout: _layout, whileHover: _whileHover, ...rest }: Record<string, unknown> & { children?: ReactNode }) => (
-      <div {...rest}>{children}</div>
-    ),
+    div: ({
+      children,
+      initial: _initial,
+      animate: _animate,
+      exit: _exit,
+      transition: _transition,
+      layout: _layout,
+      whileHover: _whileHover,
+      ...rest
+    }: Record<string, unknown> & { children?: ReactNode }) => <div {...rest}>{children}</div>,
   },
   AnimatePresence: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
@@ -77,9 +84,7 @@ describe('Экран задач', () => {
 
     fireEvent.click(screen.getAllByLabelText('Отметить как выполненную')[0]);
 
-    await waitFor(() =>
-      expect(screen.getAllByLabelText('Отметить как ожидающую')).toHaveLength(completedBefore + 1)
-    );
+    await waitFor(() => expect(screen.getAllByLabelText('Отметить как ожидающую')).toHaveLength(completedBefore + 1));
   });
 
   it('удаляет задачу через меню действий', async () => {

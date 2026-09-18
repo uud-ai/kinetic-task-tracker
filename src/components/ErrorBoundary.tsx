@@ -35,7 +35,8 @@ export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, E
             <div className="space-y-2">
               <h1 className="font-headline font-extrabold text-2xl text-on-surface">Что-то пошло не так.</h1>
               <p className="text-on-surface-variant text-sm">
-                В рабочем пространстве произошла непредвиденная ошибка. Вы можете перезагрузить этот экран — сохранённые задачи никуда не денутся.
+                В рабочем пространстве произошла непредвиденная ошибка. Вы можете перезагрузить этот экран — сохранённые
+                задачи никуда не денутся.
               </p>
             </div>
             <button

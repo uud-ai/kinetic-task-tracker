@@ -17,13 +17,19 @@ import { TasksProvider } from './context/TasksContext';
 
 function AuthenticatedApp() {
   const [currentScreen, setCurrentScreen] = React.useState<Screen>('dashboard');
+  const [focusSearchToken, setFocusSearchToken] = React.useState(0);
+
+  const goToTasksAndFocusSearch = () => {
+    setCurrentScreen('tasks');
+    setFocusSearchToken((n) => n + 1);
+  };
 
   const renderScreen = () => {
     switch (currentScreen) {
       case 'dashboard':
         return <Dashboard onScreenChange={setCurrentScreen} />;
       case 'tasks':
-        return <Tasks />;
+        return <Tasks focusSearchToken={focusSearchToken} />;
       case 'create':
         return <CreateTask onCreated={() => setCurrentScreen('tasks')} />;
       case 'calendar':
@@ -35,7 +41,7 @@ function AuthenticatedApp() {
 
   return (
     <TasksProvider>
-      <Layout currentScreen={currentScreen} onScreenChange={setCurrentScreen}>
+      <Layout currentScreen={currentScreen} onScreenChange={setCurrentScreen} onSearchClick={goToTasksAndFocusSearch}>
         {renderScreen()}
       </Layout>
     </TasksProvider>
@@ -47,9 +53,7 @@ function Gate() {
 
   if (initializing) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-on-surface-variant font-medium">
-        Загрузка…
-      </div>
+      <div className="min-h-screen flex items-center justify-center text-on-surface-variant font-medium">Загрузка…</div>
     );
   }
 

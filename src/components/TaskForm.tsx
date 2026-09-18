@@ -98,7 +98,9 @@ export default function TaskForm({
   return (
     <form className="space-y-8" onSubmit={handleSubmit}>
       <div className="space-y-2">
-        <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant ml-1">Название задачи</label>
+        <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant ml-1">
+          Название задачи
+        </label>
         <input
           className="w-full bg-surface-container-low border-none rounded-xl px-6 py-5 text-xl font-headline font-semibold placeholder:text-outline focus:ring-2 focus:ring-primary/10 focus:bg-surface-container-lowest transition-all"
           placeholder="Что нужно сделать?"
@@ -135,10 +137,10 @@ export default function TaskForm({
                 type="button"
                 onClick={() => setPriority(p)}
                 className={cn(
-                  "flex-1 py-2 rounded-full text-[10px] font-bold uppercase tracking-tighter transition-all",
+                  'flex-1 py-2 rounded-full text-[10px] font-bold uppercase tracking-tighter transition-all',
                   priority === p
-                    ? "bg-primary text-on-primary"
-                    : "bg-surface-container-highest text-on-surface-variant hover:bg-surface-container-low"
+                    ? 'bg-primary text-on-primary'
+                    : 'bg-surface-container-highest text-on-surface-variant hover:bg-surface-container-low'
                 )}
               >
                 {PRIORITY_LABELS[p]}
@@ -160,10 +162,10 @@ export default function TaskForm({
               type="button"
               onClick={() => setCategory(c)}
               className={cn(
-                "flex-1 py-2 rounded-full text-[10px] font-bold uppercase tracking-tighter transition-all",
+                'flex-1 py-2 rounded-full text-[10px] font-bold uppercase tracking-tighter transition-all',
                 category === c
-                  ? "bg-primary text-on-primary"
-                  : "bg-surface-container-highest text-on-surface-variant hover:bg-surface-container-low"
+                  ? 'bg-primary text-on-primary'
+                  : 'bg-surface-container-highest text-on-surface-variant hover:bg-surface-container-low'
               )}
             >
               {CATEGORY_LABELS[c]}
@@ -173,7 +175,9 @@ export default function TaskForm({
       </div>
 
       <div className="space-y-2">
-        <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant ml-1">Контекст и детали</label>
+        <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant ml-1">
+          Контекст и детали
+        </label>
         <textarea
           className="w-full bg-surface-container-low border-none rounded-xl px-6 py-4 text-on-surface placeholder:text-outline focus:ring-2 focus:ring-primary/10 focus:bg-surface-container-lowest transition-all resize-none"
           placeholder="Добавьте немного архитектурной глубины к этой задаче..."
@@ -187,9 +191,16 @@ export default function TaskForm({
         <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant ml-1">Теги</label>
         <div className="flex flex-wrap gap-2 items-center">
           {tags.map((tag) => (
-            <span key={tag} className="px-4 py-1.5 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase tracking-wider flex items-center gap-2">
+            <span
+              key={tag}
+              className="px-4 py-1.5 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase tracking-wider flex items-center gap-2"
+            >
               #{tag}
-              <button type="button" onClick={() => setTags(tags.filter(t => t !== tag))} aria-label={`Удалить тег ${tag}`}>
+              <button
+                type="button"
+                onClick={() => setTags(tags.filter((t) => t !== tag))}
+                aria-label={`Удалить тег ${tag}`}
+              >
                 <X size={12} />
               </button>
             </span>

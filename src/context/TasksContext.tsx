@@ -137,11 +137,7 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
   const addTask = React.useCallback(
     async (task: NewTask): Promise<Task> => {
       if (!user) throw new Error('Требуется вход в аккаунт.');
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert(taskToRow(user.id, task))
-        .select()
-        .single();
+      const { data, error } = await supabase.from('tasks').insert(taskToRow(user.id, task)).select().single();
       if (error || !data) throw error ?? new Error('Не удалось создать задачу.');
       const newTask = rowToTask(data as TaskRow);
       setTasks((prev) => (prev.some((t) => t.id === newTask.id) ? prev : [newTask, ...prev]));
