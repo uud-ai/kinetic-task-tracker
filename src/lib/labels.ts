@@ -27,6 +27,15 @@ export function pluralizeTasks(count: number): string {
   return 'задач';
 }
 
+export function pluralizeChanges(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 14) return 'изменений';
+  if (mod10 === 1) return 'изменение';
+  if (mod10 >= 2 && mod10 <= 4) return 'изменения';
+  return 'изменений';
+}
+
 const AUTH_ERROR_LABELS: [match: string, label: string][] = [
   ['Invalid login credentials', 'Неверный email или пароль.'],
   ['User already registered', 'Этот email уже зарегистрирован.'],

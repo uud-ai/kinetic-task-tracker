@@ -18,6 +18,7 @@ import { useTheme } from '@/src/lib/useTheme';
 import { useAuth } from '@/src/context/AuthContext';
 import { useTasks } from '@/src/context/TasksContext';
 import { useOnlineStatus } from '@/src/lib/useOnlineStatus';
+import { pluralizeChanges } from '@/src/lib/labels';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -29,7 +30,7 @@ interface LayoutProps {
 export default function Layout({ children, currentScreen, onScreenChange, onSearchClick }: LayoutProps) {
   const { theme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
-  const { loading, error, retry } = useTasks();
+  const { loading, error, pendingSyncCount, retry } = useTasks();
   const online = useOnlineStatus();
   const navItems = [
     { id: 'dashboard', label: 'Обзор', icon: LayoutDashboard },
@@ -93,7 +94,19 @@ export default function Layout({ children, currentScreen, onScreenChange, onSear
             className="mb-6 rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2 bg-surface-container-low text-on-surface-variant"
           >
             <WifiOff size={16} aria-hidden="true" />
-            Нет подключения — показаны последние загруженные задачи. Изменения будут недоступны до восстановления сети.
+            Нет подключения — показаны последние загруженные задачи.
+            {pendingSyncCount > 0
+              ? ` ${pendingSyncCount} ${pluralizeChanges(pendingSyncCount)} отправятся автоматически, когда сеть вернётся.`
+              : ' Изменения будут отправлены автоматически, когда сеть вернётся.'}
+          </div>
+        )}
+        {online && pendingSyncCount > 0 && (
+          <div
+            role="status"
+            className="mb-6 rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2 bg-surface-container-low text-on-surface-variant"
+          >
+            <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+            Синхронизируем {pendingSyncCount} {pluralizeChanges(pendingSyncCount)}…
           </div>
         )}
         {online && (loading || error) && (

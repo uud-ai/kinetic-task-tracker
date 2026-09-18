@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { resetMockTasks } from '@/src/test/supabaseMock';
+import { resetMockTasks, forceNextError } from '@/src/test/supabaseMock';
 import { TasksProvider, useTasks, NewTask } from './TasksContext';
 
 vi.mock('@/src/lib/supabase', () => import('@/src/test/supabaseMock'));
@@ -19,6 +19,7 @@ const baseTask: NewTask = {
 };
 
 beforeEach(() => {
+  localStorage.clear();
   resetMockTasks();
 });
 
@@ -89,6 +90,47 @@ describe('TasksContext', () => {
 
     const updated = result.current.tasks.find((t) => t.id === created!.id);
     expect(updated).toMatchObject({ title: 'Обновлённое название', priority: 'High' });
+  });
+
+  it('ставит изменение в очередь синхронизации вместо отката при сетевой ошибке', async () => {
+    const { result } = renderHook(() => useTasks(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let created;
+    await act(async () => {
+      created = await result.current.addTask(baseTask);
+    });
+
+    forceNextError('update', 'Failed to fetch');
+    await act(async () => {
+      await result.current.toggleTaskStatus(created!.id);
+    });
+
+    expect(result.current.tasks.find((t) => t.id === created!.id)?.status).toBe('Completed');
+    expect(result.current.error).toBeNull();
+    expect(result.current.pendingSyncCount).toBe(1);
+  });
+
+  it('отправляет отложенные изменения при восстановлении сети', async () => {
+    const { result } = renderHook(() => useTasks(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let created;
+    await act(async () => {
+      created = await result.current.addTask(baseTask);
+    });
+
+    forceNextError('update', 'Failed to fetch');
+    await act(async () => {
+      await result.current.toggleTaskStatus(created!.id);
+    });
+    expect(result.current.pendingSyncCount).toBe(1);
+
+    await act(async () => {
+      window.dispatchEvent(new Event('online'));
+    });
+
+    await waitFor(() => expect(result.current.pendingSyncCount).toBe(0));
   });
 
   it('загружает существующие задачи пользователя при монтировании', async () => {

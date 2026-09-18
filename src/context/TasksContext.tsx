@@ -4,6 +4,7 @@ import { Task } from '@/src/types';
 import { supabase } from '@/src/lib/supabase';
 import { useAuth } from '@/src/context/AuthContext';
 import { seedTasks } from '@/src/lib/seedTasks';
+import { enqueueOperation, flushQueue, getQueue, isNetworkError } from '@/src/lib/offlineQueue';
 
 export type NewTask = Omit<Task, 'id' | 'status'> & { status?: Task['status'] };
 
@@ -85,6 +86,7 @@ interface TasksContextValue {
   tasks: Task[];
   loading: boolean;
   error: string | null;
+  pendingSyncCount: number;
   retry: () => void;
   addTask: (task: NewTask) => Promise<Task>;
   updateTask: (id: string, patch: Partial<NewTask>) => Promise<void>;
@@ -100,8 +102,28 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [retryToken, setRetryToken] = React.useState(0);
+  const [pendingSyncCount, setPendingSyncCount] = React.useState(0);
 
   const retry = React.useCallback(() => setRetryToken((n) => n + 1), []);
+
+  React.useEffect(() => {
+    if (!user) {
+      setPendingSyncCount(0);
+      return;
+    }
+
+    setPendingSyncCount(getQueue(user.id).length);
+
+    const flush = async () => {
+      if (!navigator.onLine) return;
+      await flushQueue(user.id);
+      setPendingSyncCount(getQueue(user.id).length);
+    };
+
+    flush();
+    window.addEventListener('online', flush);
+    return () => window.removeEventListener('online', flush);
+  }, [user]);
 
   React.useEffect(() => {
     if (!user) {
@@ -164,16 +186,36 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
     if (user && !loading) writeTasksCache(user.id, tasks);
   }, [user, loading, tasks]);
 
+  const queueForLater = React.useCallback(
+    (op: Parameters<typeof enqueueOperation>[1]) => {
+      if (!user) return;
+      enqueueOperation(user.id, op);
+      setPendingSyncCount(getQueue(user.id).length);
+    },
+    [user]
+  );
+
   const addTask = React.useCallback(
     async (task: NewTask): Promise<Task> => {
       if (!user) throw new Error('Требуется вход в аккаунт.');
-      const { data, error } = await supabase.from('tasks').insert(taskToRow(user.id, task)).select().single();
-      if (error || !data) throw error ?? new Error('Не удалось создать задачу.');
-      const newTask = rowToTask(data as TaskRow);
-      setTasks((prev) => (prev.some((t) => t.id === newTask.id) ? prev : [newTask, ...prev]));
+      const id = crypto.randomUUID();
+      const newTask: Task = { ...task, id, status: task.status ?? 'Pending' };
+      const row = { id, ...taskToRow(user.id, task) };
+
+      setTasks((prev) => [newTask, ...prev]);
+
+      const { error } = await supabase.from('tasks').insert(row);
+      if (error) {
+        if (isNetworkError(error)) {
+          queueForLater({ kind: 'insert', id, row });
+          return newTask;
+        }
+        setTasks((prev) => prev.filter((t) => t.id !== id));
+        throw error;
+      }
       return newTask;
     },
-    [user]
+    [user, queueForLater]
   );
 
   const updateTask = React.useCallback(
@@ -182,13 +224,18 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
       if (!current) return;
       const optimistic: Task = { ...current, ...patch };
       setTasks((prev) => prev.map((t) => (t.id === id ? optimistic : t)));
-      const { error: updateError } = await supabase.from('tasks').update(taskPatchToRow(patch)).eq('id', id);
+      const row = taskPatchToRow(patch);
+      const { error: updateError } = await supabase.from('tasks').update(row).eq('id', id);
       if (updateError) {
+        if (isNetworkError(updateError)) {
+          queueForLater({ kind: 'update', id, row });
+          return;
+        }
         setTasks((prev) => prev.map((t) => (t.id === id ? current : t)));
         throw updateError;
       }
     },
-    [tasks]
+    [tasks, queueForLater]
   );
 
   const toggleTaskStatus = React.useCallback(
@@ -199,11 +246,15 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
       setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: nextStatus } : t)));
       const { error: updateError } = await supabase.from('tasks').update({ status: nextStatus }).eq('id', id);
       if (updateError) {
+        if (isNetworkError(updateError)) {
+          queueForLater({ kind: 'update', id, row: { status: nextStatus } });
+          return;
+        }
         setTasks((prev) => prev.map((t) => (t.id === id ? current : t)));
         setError('Не удалось сохранить изменения. Проверьте подключение.');
       }
     },
-    [tasks]
+    [tasks, queueForLater]
   );
 
   const deleteTask = React.useCallback(
@@ -211,17 +262,23 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
       const removed = tasks.find((t) => t.id === id);
       setTasks((prev) => prev.filter((t) => t.id !== id));
       const { error: deleteError } = await supabase.from('tasks').delete().eq('id', id);
-      if (deleteError && removed) {
-        setTasks((prev) => (prev.some((t) => t.id === id) ? prev : [removed, ...prev]));
+      if (deleteError) {
+        if (isNetworkError(deleteError)) {
+          queueForLater({ kind: 'delete', id });
+          return;
+        }
+        if (removed) {
+          setTasks((prev) => (prev.some((t) => t.id === id) ? prev : [removed, ...prev]));
+        }
         setError('Не удалось удалить задачу. Проверьте подключение.');
       }
     },
-    [tasks]
+    [tasks, queueForLater]
   );
 
   const value = React.useMemo(
-    () => ({ tasks, loading, error, retry, addTask, updateTask, toggleTaskStatus, deleteTask }),
-    [tasks, loading, error, retry, addTask, updateTask, toggleTaskStatus, deleteTask]
+    () => ({ tasks, loading, error, pendingSyncCount, retry, addTask, updateTask, toggleTaskStatus, deleteTask }),
+    [tasks, loading, error, pendingSyncCount, retry, addTask, updateTask, toggleTaskStatus, deleteTask]
   );
 
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;

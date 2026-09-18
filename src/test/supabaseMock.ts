@@ -29,9 +29,25 @@ function thenable<T>(resolve: () => T) {
   return { then: (onFulfilled: (value: T) => unknown) => Promise.resolve(resolve()).then(onFulfilled) };
 }
 
+type ForcedErrorKind = 'insert' | 'update' | 'delete';
+let forcedError: { kind: ForcedErrorKind; message: string } | null = null;
+
 export function resetMockTasks(rows: Partial<MockTaskRow>[] = []) {
   mockTaskRows.length = 0;
   mockTaskRows.push(...rows.map(materialize));
+  forcedError = null;
+}
+
+/** Makes the next matching insert/update/delete resolve with this error instead of succeeding — simulates being offline. */
+export function forceNextError(kind: ForcedErrorKind, message = 'Failed to fetch') {
+  forcedError = { kind, message };
+}
+
+function takeForcedError(kind: ForcedErrorKind): { message: string } | null {
+  if (forcedError?.kind !== kind) return null;
+  const { message } = forcedError;
+  forcedError = null;
+  return { message };
 }
 
 export const supabase = {
@@ -44,21 +60,22 @@ export const supabase = {
         const materialized = (Array.isArray(rowOrRows) ? rowOrRows : [rowOrRows]).map(materialize);
         let committed = false;
         const commit = () => {
+          const forced = takeForcedError('insert');
+          if (forced) return { data: null, error: forced };
           if (!committed) {
             mockTaskRows.unshift(...materialized);
             committed = true;
           }
+          return { data: materialized, error: null };
         };
         return {
-          then: (onFulfilled: (value: { data: MockTaskRow[]; error: null }) => unknown) => {
-            commit();
-            return Promise.resolve({ data: materialized, error: null }).then(onFulfilled);
-          },
+          then: (onFulfilled: (value: { data: MockTaskRow[] | null; error: { message: string } | null }) => unknown) =>
+            Promise.resolve(commit()).then(onFulfilled),
           select: () => ({
             single: () =>
               thenable(() => {
-                commit();
-                return { data: materialized[0], error: null };
+                const result = commit();
+                return { data: result.data?.[0] ?? null, error: result.error };
               }),
           }),
         };
@@ -66,6 +83,8 @@ export const supabase = {
       update: (patch: Partial<MockTaskRow>) => ({
         eq: (_column: string, id: string) =>
           thenable(() => {
+            const forced = takeForcedError('update');
+            if (forced) return { error: forced };
             const row = mockTaskRows.find((r) => r.id === id);
             if (row) Object.assign(row, patch);
             return { error: null };
@@ -74,6 +93,8 @@ export const supabase = {
       delete: () => ({
         eq: (_column: string, id: string) =>
           thenable(() => {
+            const forced = takeForcedError('delete');
+            if (forced) return { error: forced };
             const index = mockTaskRows.findIndex((r) => r.id === id);
             if (index !== -1) mockTaskRows.splice(index, 1);
             return { error: null };
