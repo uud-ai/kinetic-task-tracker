@@ -1,7 +1,8 @@
 import React from 'react';
-import { LayoutDashboard, ListTodo, PlusCircle, Calendar as CalendarIcon, Search } from 'lucide-react';
+import { LayoutDashboard, ListTodo, PlusCircle, Calendar as CalendarIcon, Search, Sun, Moon } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Screen } from '@/src/types';
+import { useTheme } from '@/src/lib/useTheme';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,11 +11,12 @@ interface LayoutProps {
 }
 
 export default function Layout({ children, currentScreen, onScreenChange }: LayoutProps) {
+  const { theme, toggleTheme } = useTheme();
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'tasks', label: 'Tasks', icon: ListTodo },
-    { id: 'create', label: 'Create', icon: PlusCircle },
-    { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
+    { id: 'dashboard', label: 'Обзор', icon: LayoutDashboard },
+    { id: 'tasks', label: 'Задачи', icon: ListTodo },
+    { id: 'create', label: 'Создать', icon: PlusCircle },
+    { id: 'calendar', label: 'Календарь', icon: CalendarIcon },
   ] as const;
 
   return (
@@ -23,20 +25,29 @@ export default function Layout({ children, currentScreen, onScreenChange }: Layo
       <header className="fixed top-0 w-full z-50 glass shadow-sm flex justify-between items-center px-6 h-16">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-md overflow-hidden bg-surface-container-highest">
-            <img 
-              src="https://picsum.photos/seed/curator/100/100" 
-              alt="User" 
+            <img
+              src="https://picsum.photos/seed/curator/100/100"
+              alt="Пользователь"
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
             />
           </div>
           <h1 className="text-xl font-extrabold text-primary tracking-tighter font-headline">
-            The Kinetic Workspace
+            Кинетическое пространство
           </h1>
         </div>
-        <button className="p-2 text-outline hover:bg-surface-container-low rounded-full transition-colors">
-          <Search size={20} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Переключить на светлую тему' : 'Переключить на тёмную тему'}
+            className="p-2 text-outline hover:bg-surface-container-low rounded-full transition-colors"
+          >
+            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+          <button aria-label="Поиск" className="p-2 text-outline hover:bg-surface-container-low rounded-full transition-colors">
+            <Search size={20} />
+          </button>
+        </div>
       </header>
 
       {/* Main Content */}
@@ -45,7 +56,7 @@ export default function Layout({ children, currentScreen, onScreenChange }: Layo
       </main>
 
       {/* Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-8 pt-3 bg-white/90 backdrop-blur-2xl rounded-t-[2rem] shadow-[0_-8px_30px_rgb(0,0,0,0.04)]">
+      <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-8 pt-3 bg-surface-container-lowest/90 backdrop-blur-2xl rounded-t-[2rem] shadow-[0_-8px_30px_rgb(0,0,0,0.04)]">
         {navItems.map((item) => {
           const isActive = currentScreen === item.id;
           const Icon = item.icon;

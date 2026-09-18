@@ -5,23 +5,30 @@ import { cn } from '@/src/lib/utils';
 import { Task } from '@/src/types';
 import { useTasks } from '@/src/context/TasksContext';
 import { format, isToday, parseISO } from 'date-fns';
+import { ru } from 'date-fns/locale';
+import { PRIORITY_LABELS, STATUS_LABELS } from '@/src/lib/labels';
 
-const FILTERS = ['All', 'Today', 'Important', 'Projects'] as const;
-type Filter = (typeof FILTERS)[number];
+const FILTERS = [
+  { id: 'all', label: 'Все' },
+  { id: 'today', label: 'Сегодня' },
+  { id: 'important', label: 'Важное' },
+  { id: 'projects', label: 'Проекты' },
+] as const;
+type FilterId = (typeof FILTERS)[number]['id'];
 
 export default function Tasks() {
   const { tasks, toggleTaskStatus, deleteTask } = useTasks();
-  const [activeFilter, setActiveFilter] = React.useState<Filter>('All');
+  const [activeFilter, setActiveFilter] = React.useState<FilterId>('all');
   const [query, setQuery] = React.useState('');
 
   const filtered = tasks.filter((task) => {
     if (query && !task.title.toLowerCase().includes(query.toLowerCase())) return false;
     switch (activeFilter) {
-      case 'Today':
+      case 'today':
         return isToday(parseISO(task.dueDate));
-      case 'Important':
+      case 'important':
         return task.priority === 'High';
-      case 'Projects':
+      case 'projects':
         return task.category === 'Work';
       default:
         return true;
@@ -31,14 +38,15 @@ export default function Tasks() {
   return (
     <div className="space-y-10">
       <section>
-        <h2 className="text-4xl font-extrabold tracking-tight text-on-surface mb-8 font-headline">Tasks</h2>
+        <h2 className="text-4xl font-extrabold tracking-tight text-on-surface mb-8 font-headline">Задачи</h2>
         <div className="relative group">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-outline">
             <Search size={20} />
           </div>
           <input
             className="w-full bg-surface-container-low border-none rounded-xl py-4 pl-12 pr-4 text-on-surface focus:ring-2 focus:ring-primary/10 focus:bg-surface-container-lowest transition-all duration-200 placeholder:text-on-surface-variant/50 font-medium"
-            placeholder="Find a workflow..."
+            placeholder="Найти рабочий процесс..."
+            aria-label="Поиск задач"
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -49,16 +57,16 @@ export default function Tasks() {
       <nav className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
         {FILTERS.map((filter) => (
           <button
-            key={filter}
-            onClick={() => setActiveFilter(filter)}
+            key={filter.id}
+            onClick={() => setActiveFilter(filter.id)}
             className={cn(
               "px-6 py-2.5 rounded-full font-semibold text-sm transition-all active:scale-95 shrink-0",
-              activeFilter === filter
+              activeFilter === filter.id
                 ? "bg-primary text-on-primary"
                 : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container-highest"
             )}
           >
-            {filter}
+            {filter.label}
           </button>
         ))}
       </nav>
@@ -71,8 +79,8 @@ export default function Tasks() {
         </AnimatePresence>
         {filtered.length === 0 && (
           <div className="text-center py-16 text-on-surface-variant">
-            <p className="font-semibold">No tasks match here yet.</p>
-            <p className="text-sm">Try a different filter or search term.</p>
+            <p className="font-semibold">Здесь пока нет подходящих задач.</p>
+            <p className="text-sm">Попробуйте другой фильтр или запрос.</p>
           </div>
         )}
       </div>
@@ -91,7 +99,7 @@ function TaskItem({
 }) {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const isCompleted = task.status === 'Completed';
-  const due = isToday(parseISO(task.dueDate)) ? 'Due today' : format(parseISO(task.dueDate), 'MMM d');
+  const due = isToday(parseISO(task.dueDate)) ? 'Сегодня' : format(parseISO(task.dueDate), 'd MMM', { locale: ru });
 
   return (
     <motion.div
@@ -107,7 +115,7 @@ function TaskItem({
       <div className="mt-1">
         <button
           onClick={() => onToggle(task.id)}
-          aria-label={isCompleted ? 'Mark as pending' : 'Mark as completed'}
+          aria-label={isCompleted ? 'Отметить как ожидающую' : 'Отметить как выполненную'}
           className={cn(
             "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
             isCompleted
@@ -127,12 +135,12 @@ function TaskItem({
               task.priority === 'Medium' ? "bg-secondary-container text-on-secondary-container" :
               "bg-surface-container-highest text-on-surface-variant"
             )}>
-              {task.priority} Priority
+              {`${PRIORITY_LABELS[task.priority]} приоритет`}
             </span>
           )}
           {isCompleted && (
             <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-tertiary-container text-on-tertiary-container">
-              Completed
+              {STATUS_LABELS.Completed}
             </span>
           )}
           {!isCompleted && <span className="text-[11px] text-on-surface-variant font-medium">{due}</span>}
@@ -154,7 +162,7 @@ function TaskItem({
       <div className="relative opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
         <button
           onClick={() => setMenuOpen((v) => !v)}
-          aria-label="Task actions"
+          aria-label="Действия с задачей"
           className="p-2 text-outline hover:text-on-surface"
         >
           <MoreVertical size={20} />
@@ -168,7 +176,7 @@ function TaskItem({
               }}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-on-error-container hover:bg-error-container whitespace-nowrap"
             >
-              <Trash2 size={14} /> Delete
+              <Trash2 size={14} /> Удалить
             </button>
           </div>
         )}

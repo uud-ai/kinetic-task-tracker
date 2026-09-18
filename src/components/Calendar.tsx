@@ -1,10 +1,11 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, Clock, CheckCircle2 } from 'lucide-react';
-import { motion } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
+import { ru } from 'date-fns/locale';
 import { Task, Screen } from '@/src/types';
 import { useTasks } from '@/src/context/TasksContext';
+import { CATEGORY_LABELS, PRIORITY_LABELS, STATUS_LABELS, pluralizeTasks } from '@/src/lib/labels';
 
 interface CalendarProps {
   onScreenChange?: (screen: Screen) => void;
@@ -28,7 +29,7 @@ export default function Calendar({ onScreenChange }: CalendarProps) {
   const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
   const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
-  const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const daysOfWeek = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
   const tasksByDay = (day: Date) => tasks.filter((t) => isSameDay(new Date(`${t.dueDate}T00:00:00`), day));
 
@@ -39,23 +40,23 @@ export default function Calendar({ onScreenChange }: CalendarProps) {
       <header className="flex justify-between items-end">
         <div>
           <h1 className="font-headline font-extrabold text-5xl text-on-surface tracking-tight mb-2">
-            {format(currentDate, 'MMMM yyyy')}
+            {format(currentDate, 'LLLL yyyy', { locale: ru })}
           </h1>
           <p className="text-on-surface-variant font-medium text-lg">
-            {isSameDay(selectedDate, today) ? 'Your focus for today is curated.' : `Viewing ${format(selectedDate, 'MMMM d')}.`}
+            {isSameDay(selectedDate, today) ? 'Ваш фокус на сегодня продуман.' : `Просмотр даты ${format(selectedDate, 'd MMMM', { locale: ru })}.`}
           </p>
         </div>
         <div className="flex gap-2 mb-2">
           <button
             onClick={() => setCurrentDate(subMonths(currentDate, 1))}
-            aria-label="Previous month"
+            aria-label="Предыдущий месяц"
             className="p-2 rounded-xl bg-surface-container-low hover:bg-surface-container-highest transition-colors"
           >
             <ChevronLeft size={20} />
           </button>
           <button
             onClick={() => setCurrentDate(addMonths(currentDate, 1))}
-            aria-label="Next month"
+            aria-label="Следующий месяц"
             className="p-2 rounded-xl bg-surface-container-low hover:bg-surface-container-highest transition-colors"
           >
             <ChevronRight size={20} />
@@ -101,9 +102,9 @@ export default function Calendar({ onScreenChange }: CalendarProps) {
           </div>
 
           <div className="flex items-center gap-6 pt-8 border-t border-surface-container-highest/30">
-            <LegendItem color="bg-primary" label="Work" />
-            <LegendItem color="bg-tertiary-container" label="Personal" />
-            <LegendItem color="bg-error-container" label="Health" />
+            <LegendItem color="bg-primary" label={CATEGORY_LABELS.Work} />
+            <LegendItem color="bg-tertiary-container" label={CATEGORY_LABELS.Personal} />
+            <LegendItem color="bg-error-container" label={CATEGORY_LABELS.Health} />
           </div>
         </div>
 
@@ -111,16 +112,16 @@ export default function Calendar({ onScreenChange }: CalendarProps) {
         <div className="lg:col-span-4 space-y-6">
           <div className="flex justify-between items-center px-2">
             <h2 className="font-headline font-bold text-xl">
-              {isSameDay(selectedDate, today) ? "Today's Agenda" : format(selectedDate, 'MMM d')+"'s Agenda"}
+              {isSameDay(selectedDate, today) ? 'Повестка на сегодня' : `Повестка на ${format(selectedDate, 'd MMM', { locale: ru })}`}
             </h2>
             <span className="px-3 py-1 bg-secondary-container text-on-secondary-container text-[10px] font-bold rounded-full uppercase">
-              {agenda.length} {agenda.length === 1 ? 'TASK' : 'TASKS'}
+              {agenda.length} {pluralizeTasks(agenda.length)}
             </span>
           </div>
 
           <div className="space-y-4">
             {agenda.length === 0 && (
-              <p className="text-on-surface-variant text-sm px-2">Nothing scheduled for this day.</p>
+              <p className="text-on-surface-variant text-sm px-2">На этот день ничего не запланировано.</p>
             )}
             {agenda.map((task) => (
               <AgendaItem key={task.id} task={task} onToggle={toggleTaskStatus} />
@@ -131,7 +132,7 @@ export default function Calendar({ onScreenChange }: CalendarProps) {
             onClick={() => onScreenChange?.('create')}
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
-            Create Task
+            Создать задачу
           </button>
         </div>
       </div>
@@ -139,7 +140,7 @@ export default function Calendar({ onScreenChange }: CalendarProps) {
   );
 }
 
-function LegendItem({ color, label }: any) {
+function LegendItem({ color, label }: { color: string; label: string }) {
   return (
     <div className="flex items-center gap-2">
       <span className={cn("w-2.5 h-2.5 rounded-full", color)}></span>
@@ -156,7 +157,7 @@ function AgendaItem({ task, onToggle }: { task: Task; onToggle: (id: string) => 
       completed && "opacity-60 grayscale"
     )}>
       <div className="flex justify-between items-start mb-4">
-        <button onClick={() => onToggle(task.id)} aria-label={completed ? 'Mark as pending' : 'Mark as completed'}>
+        <button onClick={() => onToggle(task.id)} aria-label={completed ? 'Отметить как ожидающую' : 'Отметить как выполненную'}>
           {completed ? (
             <CheckCircle2 className="text-tertiary-container" size={20} />
           ) : (
@@ -168,12 +169,12 @@ function AgendaItem({ task, onToggle }: { task: Task; onToggle: (id: string) => 
             "px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tighter",
             task.priority === 'High' ? "bg-error-container text-on-error-container" : "bg-primary-container text-on-primary"
           )}>
-            {task.priority}
+            {PRIORITY_LABELS[task.priority]}
           </div>
         )}
         {completed && (
           <div className="px-2 py-0.5 rounded-full bg-tertiary-container text-on-tertiary-container text-[9px] font-bold uppercase tracking-tighter">
-            Done
+            {STATUS_LABELS.Completed}
           </div>
         )}
       </div>

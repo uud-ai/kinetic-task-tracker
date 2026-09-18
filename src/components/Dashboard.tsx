@@ -5,6 +5,7 @@ import { cn } from '@/src/lib/utils';
 import { Task, Screen } from '@/src/types';
 import { useTasks } from '@/src/context/TasksContext';
 import { isToday, parseISO, compareAsc } from 'date-fns';
+import { CATEGORY_LABELS, STATUS_LABELS, pluralizeTasks } from '@/src/lib/labels';
 
 interface DashboardProps {
   onScreenChange?: (screen: Screen) => void;
@@ -40,9 +41,9 @@ export default function Dashboard({ onScreenChange }: DashboardProps) {
 
   const greeting = (() => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Morning, Curator.';
-    if (hour < 18) return 'Afternoon, Curator.';
-    return 'Evening, Curator.';
+    if (hour < 12) return 'Доброе утро, куратор.';
+    if (hour < 18) return 'Добрый день, куратор.';
+    return 'Добрый вечер, куратор.';
   })();
 
   return (
@@ -62,29 +63,29 @@ export default function Dashboard({ onScreenChange }: DashboardProps) {
           transition={{ delay: 0.1 }}
           className="text-on-surface-variant font-medium text-lg"
         >
-          Your workspace is harmonized. {pendingToday.length} task{pendingToday.length === 1 ? '' : 's'} remain for today.
+          Ваше пространство гармонизировано. На сегодня осталось {pendingToday.length} {pluralizeTasks(pendingToday.length)}.
         </motion.p>
       </section>
 
       {/* Stats Bento Grid */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard
-          label="Completed"
+          label="Выполнено"
           value={String(completed.length).padStart(2, '0')}
           total={`/${tasks.length}`}
           icon={<CheckCircle2 className="text-tertiary-container" />}
           className="bg-surface-container-lowest"
         />
         <StatCard
-          label="In Progress"
+          label="В работе"
           value={String(inProgress.length).padStart(2, '0')}
-          total="active"
+          total="активных"
           icon={<Clock className="text-white" />}
           className="bg-primary text-white"
           dark
         />
         <StatCard
-          label="Today's Focus"
+          label="Фокус дня"
           icon={<Bolt className="text-primary" />}
           className="bg-surface-container-highest"
         >
@@ -96,7 +97,7 @@ export default function Dashboard({ onScreenChange }: DashboardProps) {
               className="bg-primary h-full"
             />
           </div>
-          <span className="text-on-surface font-semibold text-sm">{velocity}% of Daily Velocity</span>
+          <span className="text-on-surface font-semibold text-sm">{velocity}% дневного темпа</span>
         </StatCard>
       </section>
 
@@ -105,17 +106,17 @@ export default function Dashboard({ onScreenChange }: DashboardProps) {
         {/* Deadlines */}
         <div className="lg:col-span-8 space-y-8">
           <div className="flex items-center justify-between">
-            <h3 className="font-headline font-bold text-2xl text-on-surface">Immediate Deadlines</h3>
+            <h3 className="font-headline font-bold text-2xl text-on-surface">Ближайшие дедлайны</h3>
             <button
               onClick={() => onScreenChange?.('tasks')}
               className="text-primary font-bold text-sm hover:underline flex items-center gap-1"
             >
-              View All <ArrowRight size={14} />
+              Все задачи <ArrowRight size={14} />
             </button>
           </div>
           <div className="space-y-4">
             {upcoming.length === 0 && (
-              <p className="text-on-surface-variant text-sm">Nothing on the horizon — enjoy the calm.</p>
+              <p className="text-on-surface-variant text-sm">На горизонте пусто — можно выдохнуть.</p>
             )}
             {upcoming.map((task) => (
               <DeadlineCard key={task.id} task={task} />
@@ -125,17 +126,20 @@ export default function Dashboard({ onScreenChange }: DashboardProps) {
 
         {/* Collections */}
         <div className="lg:col-span-4 space-y-8">
-          <h3 className="font-headline font-bold text-2xl text-on-surface">Collections</h3>
+          <h3 className="font-headline font-bold text-2xl text-on-surface">Коллекции</h3>
           <div className="space-y-6">
-            {collections.map((cat) => (
-              <CollectionItem
-                key={cat}
-                label={cat}
-                count={`${String(tasks.filter((t) => t.category === cat).length).padStart(2, '0')} Tasks`}
-                color={CATEGORY_COLORS[cat]}
-                image={CATEGORY_IMAGES[cat]}
-              />
-            ))}
+            {collections.map((cat) => {
+              const count = tasks.filter((t) => t.category === cat).length;
+              return (
+                <CollectionItem
+                  key={cat}
+                  label={CATEGORY_LABELS[cat]}
+                  count={`${String(count).padStart(2, '0')} ${pluralizeTasks(count)}`}
+                  color={CATEGORY_COLORS[cat]}
+                  image={CATEGORY_IMAGES[cat]}
+                />
+              );
+            })}
           </div>
         </div>
       </div>
@@ -143,7 +147,17 @@ export default function Dashboard({ onScreenChange }: DashboardProps) {
   );
 }
 
-function StatCard({ label, value, total, icon, className, children, dark = false }: any) {
+interface StatCardProps {
+  label: string;
+  value?: string;
+  total?: string;
+  icon: React.ReactNode;
+  className?: string;
+  children?: React.ReactNode;
+  dark?: boolean;
+}
+
+function StatCard({ label, value, total, icon, className, children, dark = false }: StatCardProps) {
   return (
     <motion.div
       whileHover={{ y: -4 }}
@@ -166,30 +180,35 @@ function StatCard({ label, value, total, icon, className, children, dark = false
 }
 
 function DeadlineCard({ task }: { task: Task }) {
-  const [time, period] = (task.time ?? '— —').split(' ');
   return (
     <div className="bg-surface-container-lowest p-6 rounded-xl flex items-center gap-6 group hover:bg-surface-container-low transition-colors">
       <div className={cn(
         "flex flex-col items-center justify-center w-14 h-14 rounded-xl shrink-0",
         task.priority === 'High' ? "bg-error-container text-on-error-container" : "bg-surface-container-highest text-on-surface-variant"
       )}>
-        <span className="text-[10px] font-bold uppercase">{time}</span>
-        <span className="text-lg font-bold">{period}</span>
+        <span className="text-base font-bold">{task.time ?? '—'}</span>
       </div>
       <div className="flex-grow">
         <h4 className="font-bold text-lg text-on-surface">{task.title}</h4>
-        <p className="text-on-surface-variant text-sm">{task.tags.join(', ') || task.category}</p>
+        <p className="text-on-surface-variant text-sm">{task.tags.join(', ') || CATEGORY_LABELS[task.category]}</p>
       </div>
       {task.status === 'In Progress' && (
         <span className="bg-tertiary-container text-on-tertiary-container px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tight">
-          In Progress
+          {STATUS_LABELS['In Progress']}
         </span>
       )}
     </div>
   );
 }
 
-function CollectionItem({ label, count, color, image }: any) {
+interface CollectionItemProps {
+  label: string;
+  count: string;
+  color: string;
+  image: string;
+}
+
+function CollectionItem({ label, count, color, image }: CollectionItemProps) {
   return (
     <div className="group cursor-pointer">
       <div className="flex justify-between items-center mb-3">
@@ -203,7 +222,8 @@ function CollectionItem({ label, count, color, image }: any) {
         <img
           src={image}
           className="w-full h-full object-cover opacity-20 grayscale group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500"
-          alt={label}
+          alt=""
+          aria-hidden="true"
           referrerPolicy="no-referrer"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-surface/40 to-transparent"></div>

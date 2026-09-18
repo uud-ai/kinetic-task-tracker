@@ -64,6 +64,7 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- context + hook are colocated by design
 export function useTasks() {
   const ctx = React.useContext(TasksContext);
   if (!ctx) throw new Error('useTasks must be used within a TasksProvider');

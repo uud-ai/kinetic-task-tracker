@@ -33,19 +33,73 @@
   --radius-md: 0.75rem;
 }
 
+/* Dark palette applied when the OS prefers dark and the user hasn't
+   explicitly chosen light, or when the user has explicitly chosen dark. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-primary: #6f93ff;
+    --color-primary-container: #24408f;
+    --color-on-primary: #ffffff;
+
+    --color-surface: #121218;
+    --color-on-surface: #eceaf5;
+    --color-on-surface-variant: #b7b9c9;
+
+    --color-surface-container-low: #1c1c24;
+    --color-surface-container-lowest: #16161c;
+    --color-surface-container-highest: #2a2a35;
+
+    --color-secondary-container: #223354;
+    --color-on-secondary-container: #cfe0ff;
+
+    --color-tertiary-container: #0f5c3f;
+    --color-on-tertiary-container: #a6f5ce;
+
+    --color-error-container: #5c1a14;
+    --color-on-error-container: #ffb4a9;
+
+    --color-outline: #8d8fa3;
+    --color-outline-variant: #46485a;
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-primary: #6f93ff;
+  --color-primary-container: #24408f;
+  --color-on-primary: #ffffff;
+
+  --color-surface: #121218;
+  --color-on-surface: #eceaf5;
+  --color-on-surface-variant: #b7b9c9;
+
+  --color-surface-container-low: #1c1c24;
+  --color-surface-container-lowest: #16161c;
+  --color-surface-container-highest: #2a2a35;
+
+  --color-secondary-container: #223354;
+  --color-on-secondary-container: #cfe0ff;
+
+  --color-tertiary-container: #0f5c3f;
+  --color-on-tertiary-container: #a6f5ce;
+
+  --color-error-container: #5c1a14;
+  --color-on-error-container: #ffb4a9;
+
+  --color-outline: #8d8fa3;
+  --color-outline-variant: #46485a;
+}
+
 @layer base {
   body {
     @apply bg-surface text-on-surface font-body antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }
 
 @layer utilities {
   .glass {
-    @apply bg-white/80 backdrop-blur-xl;
-  }
-  
-  .glass-dark {
-    @apply bg-slate-950/80 backdrop-blur-xl;
+    @apply backdrop-blur-xl;
+    background-color: color-mix(in srgb, var(--color-surface-container-lowest) 80%, transparent);
   }
 
   .no-scrollbar::-webkit-scrollbar {
