@@ -20,7 +20,7 @@ const DEFAULT_VALUES: TaskFormValues = {
   dueDate: format(new Date(), 'yyyy-MM-dd'),
   priority: 'Medium',
   category: 'Work',
-  tags: ['дизайн', 'студия'],
+  tags: [],
 };
 
 interface TaskFormProps {
