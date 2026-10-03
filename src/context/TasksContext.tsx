@@ -134,8 +134,21 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
     }
 
     let cancelled = false;
+    let fetchResolved = false;
+    const pendingRealtimeUpdates: Array<(tasks: Task[]) => Task[]> = [];
     setLoading(true);
     setError(null);
+
+    const applyRealtimePayload = (prev: Task[], payload: RealtimePostgresChangesPayload<TaskRow>) => {
+      if (payload.eventType === 'DELETE') {
+        const deletedId = (payload.old as Partial<TaskRow>).id;
+        return prev.filter((t) => t.id !== deletedId);
+      }
+      const incoming = rowToTask(payload.new as TaskRow);
+      const exists = prev.some((t) => t.id === incoming.id);
+      if (exists) return prev.map((t) => (t.id === incoming.id ? incoming : t));
+      return [incoming, ...prev];
+    };
 
     supabase
       .from('tasks')
@@ -151,8 +164,13 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
             setError('Не удалось загрузить задачи. Проверьте подключение.');
           }
         } else if (data) {
-          setTasks((data as TaskRow[]).map(rowToTask));
+          // replay any realtime events that arrived before this fetch resolved,
+          // so they aren't clobbered by this snapshot
+          let next = (data as TaskRow[]).map(rowToTask);
+          for (const apply of pendingRealtimeUpdates) next = apply(next);
+          setTasks(next);
         }
+        fetchResolved = true;
         setLoading(false);
       });
 
@@ -162,16 +180,8 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${user.id}` },
         (payload: RealtimePostgresChangesPayload<TaskRow>) => {
-          setTasks((prev) => {
-            if (payload.eventType === 'DELETE') {
-              const deletedId = (payload.old as Partial<TaskRow>).id;
-              return prev.filter((t) => t.id !== deletedId);
-            }
-            const incoming = rowToTask(payload.new as TaskRow);
-            const exists = prev.some((t) => t.id === incoming.id);
-            if (exists) return prev.map((t) => (t.id === incoming.id ? incoming : t));
-            return [incoming, ...prev];
-          });
+          if (!fetchResolved) pendingRealtimeUpdates.push((tasks) => applyRealtimePayload(tasks, payload));
+          setTasks((prev) => applyRealtimePayload(prev, payload));
         }
       )
       .subscribe();
