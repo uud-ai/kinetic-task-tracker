@@ -38,7 +38,8 @@ export function isNetworkError(error: unknown): boolean {
       : typeof error === 'object' && error !== null && 'message' in error
         ? String((error as { message: unknown }).message)
         : '';
-  return /fetch|network|load failed/i.test(message);
+  if (error instanceof Error && error.name === 'AbortError') return true;
+  return /fetch|network|load failed|abort|timeout/i.test(message);
 }
 
 async function applyOperation(op: QueuedOperation) {
@@ -47,13 +48,25 @@ async function applyOperation(op: QueuedOperation) {
   return supabase.from('tasks').delete().eq('id', op.id);
 }
 
+const inFlightFlushes = new Map<string, Promise<QueuedOperation[]>>();
+
 /**
  * Replays queued operations in order against Supabase. Stops (leaving the
  * remainder queued) on the first network failure; a non-network failure
  * (e.g. the row was already deleted elsewhere) is dropped so it can't block
  * the queue forever.
  */
-export async function flushQueue(userId: string): Promise<QueuedOperation[]> {
+export function flushQueue(userId: string): Promise<QueuedOperation[]> {
+  // dedupe concurrent calls (e.g. mount + a flaky connection firing 'online' twice)
+  // so the same head operation is never applied to Supabase more than once
+  const existing = inFlightFlushes.get(userId);
+  if (existing) return existing;
+  const promise = flushQueueOnce(userId).finally(() => inFlightFlushes.delete(userId));
+  inFlightFlushes.set(userId, promise);
+  return promise;
+}
+
+async function flushQueueOnce(userId: string): Promise<QueuedOperation[]> {
   let queue = getQueue(userId);
   while (queue.length > 0) {
     const op = queue[0];
