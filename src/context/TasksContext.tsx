@@ -293,5 +293,6 @@ export function useTasks() {
 
 // eslint-disable-next-line react-refresh/only-export-components -- one-off write helper colocated with the context that owns the schema mapping
 export async function seedInitialTasks(userId: string) {
-  await supabase.from('tasks').insert(seedTasks.map((task) => taskToRow(userId, task)));
+  const { error } = await supabase.from('tasks').insert(seedTasks.map((task) => taskToRow(userId, task)));
+  if (error) throw error;
 }
