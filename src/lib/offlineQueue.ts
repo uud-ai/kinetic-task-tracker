@@ -59,7 +59,8 @@ export async function flushQueue(userId: string): Promise<QueuedOperation[]> {
     const op = queue[0];
     const { error } = await applyOperation(op);
     if (error && isNetworkError(error)) break;
-    queue = queue.slice(1);
+    // re-read: enqueueOperation may have appended while applyOperation was in flight
+    queue = getQueue(userId).slice(1);
     setQueue(userId, queue);
   }
   return queue;
