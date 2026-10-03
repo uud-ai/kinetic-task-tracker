@@ -44,6 +44,7 @@ export default function EditTaskModal({ task, onClose }: EditTaskModalProps) {
               title: task.title,
               description: task.description,
               dueDate: task.dueDate,
+              time: task.time,
               priority: task.priority,
               category: task.category,
               tags: task.tags,

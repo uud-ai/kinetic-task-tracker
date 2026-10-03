@@ -9,19 +9,23 @@ export interface TaskFormValues {
   title: string;
   description: string;
   dueDate: string;
+  time?: string;
   priority: Priority;
   category: Task['category'];
   tags: string[];
 }
 
-const DEFAULT_VALUES: TaskFormValues = {
-  title: '',
-  description: '',
-  dueDate: format(new Date(), 'yyyy-MM-dd'),
-  priority: 'Medium',
-  category: 'Work',
-  tags: [],
-};
+function defaultValues(): TaskFormValues {
+  return {
+    title: '',
+    description: '',
+    dueDate: format(new Date(), 'yyyy-MM-dd'),
+    time: '',
+    priority: 'Medium',
+    category: 'Work',
+    tags: [],
+  };
+}
 
 interface TaskFormProps {
   initialValues?: Partial<TaskFormValues>;
@@ -42,10 +46,11 @@ export default function TaskForm({
   resetOnSuccess = false,
   onCancel,
 }: TaskFormProps) {
-  const merged = { ...DEFAULT_VALUES, ...initialValues };
+  const merged = { ...defaultValues(), ...initialValues };
   const [title, setTitle] = React.useState(merged.title);
   const [description, setDescription] = React.useState(merged.description);
   const [dueDate, setDueDate] = React.useState(merged.dueDate);
+  const [time, setTime] = React.useState(merged.time ?? '');
   const [priority, setPriority] = React.useState<Priority>(merged.priority);
   const [category, setCategory] = React.useState<Task['category']>(merged.category);
   const [tags, setTags] = React.useState<string[]>(merged.tags);
@@ -75,17 +80,20 @@ export default function TaskForm({
         title: title.trim(),
         description: description.trim(),
         dueDate,
+        time: time || undefined,
         priority,
         category,
         tags,
       });
       if (resetOnSuccess) {
-        setTitle(DEFAULT_VALUES.title);
-        setDescription(DEFAULT_VALUES.description);
-        setDueDate(DEFAULT_VALUES.dueDate);
-        setPriority(DEFAULT_VALUES.priority);
-        setCategory(DEFAULT_VALUES.category);
-        setTags(DEFAULT_VALUES.tags);
+        const fresh = defaultValues();
+        setTitle(fresh.title);
+        setDescription(fresh.description);
+        setDueDate(fresh.dueDate);
+        setTime(fresh.time ?? '');
+        setPriority(fresh.priority);
+        setCategory(fresh.category);
+        setTags(fresh.tags);
       }
       onSuccess?.();
     } catch {
@@ -117,12 +125,20 @@ export default function TaskForm({
             <CalendarIcon size={18} />
             <label className="text-[10px] font-bold uppercase tracking-wider">Срок выполнения</label>
           </div>
-          <input
-            className="w-full bg-transparent border-none p-0 text-on-surface font-medium focus:ring-0"
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-          />
+          <div className="flex gap-3">
+            <input
+              className="w-full bg-transparent border-none p-0 text-on-surface font-medium focus:ring-0"
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
+            <input
+              className="w-full bg-transparent border-none p-0 text-on-surface font-medium focus:ring-0"
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
+          </div>
         </div>
 
         <div className="bg-surface-container-low p-6 rounded-xl space-y-4">
