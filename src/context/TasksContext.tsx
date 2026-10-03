@@ -104,6 +104,16 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
   const [retryToken, setRetryToken] = React.useState(0);
   const [pendingSyncCount, setPendingSyncCount] = React.useState(0);
 
+  // mirrors `tasks` synchronously (unlike React state, which may not be
+  // committed yet when the next line of code runs) so optimistic read-then-write
+  // helpers below never act on a stale snapshot
+  const tasksRef = React.useRef<Task[]>(tasks);
+  const applyTasks = React.useCallback((updater: Task[] | ((prev: Task[]) => Task[])) => {
+    const next = typeof updater === 'function' ? (updater as (prev: Task[]) => Task[])(tasksRef.current) : updater;
+    tasksRef.current = next;
+    setTasks(next);
+  }, []);
+
   const retry = React.useCallback(() => setRetryToken((n) => n + 1), []);
 
   React.useEffect(() => {
@@ -127,7 +137,7 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     if (!user) {
-      setTasks([]);
+      applyTasks([]);
       setLoading(false);
       setError(null);
       return;
@@ -159,7 +169,9 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
         if (fetchError) {
           const cached = readTasksCache(user.id);
           if (cached) {
-            setTasks(cached);
+            let next = cached;
+            for (const apply of pendingRealtimeUpdates) next = apply(next);
+            applyTasks(next);
           } else {
             setError('Не удалось загрузить задачи. Проверьте подключение.');
           }
@@ -168,7 +180,23 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
           // so they aren't clobbered by this snapshot
           let next = (data as TaskRow[]).map(rowToTask);
           for (const apply of pendingRealtimeUpdates) next = apply(next);
-          setTasks(next);
+          applyTasks(next);
+
+          // first login after email confirmation never ran the sign-up-time seed,
+          // so seed here once, the first time we see this user with an empty list
+          if (next.length === 0 && user.user_metadata?.needsSeed) {
+            seedInitialTasks(user.id)
+              .then(() => supabase.from('tasks').select('*').order('created_at', { ascending: false }))
+              .then(({ data: seeded }) => {
+                if (!cancelled && seeded) applyTasks((seeded as TaskRow[]).map(rowToTask));
+              })
+              .catch(() => {
+                if (!cancelled) setError('Не удалось создать стартовые задачи. Проверьте подключение.');
+              })
+              .finally(() => {
+                supabase.auth.updateUser({ data: { needsSeed: false } });
+              });
+          }
         }
         fetchResolved = true;
         setLoading(false);
@@ -181,7 +209,7 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
         { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${user.id}` },
         (payload: RealtimePostgresChangesPayload<TaskRow>) => {
           if (!fetchResolved) pendingRealtimeUpdates.push((tasks) => applyRealtimePayload(tasks, payload));
-          setTasks((prev) => applyRealtimePayload(prev, payload));
+          applyTasks((prev) => applyRealtimePayload(prev, payload));
         }
       )
       .subscribe();
@@ -190,7 +218,7 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [user, retryToken]);
+  }, [user, retryToken, applyTasks]);
 
   React.useEffect(() => {
     if (user && !loading) writeTasksCache(user.id, tasks);
@@ -212,7 +240,7 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
       const newTask: Task = { ...task, id, status: task.status ?? 'Pending' };
       const row = { id, ...taskToRow(user.id, task) };
 
-      setTasks((prev) => [newTask, ...prev]);
+      applyTasks((prev) => [newTask, ...prev]);
 
       const { error } = await supabase.from('tasks').insert(row);
       if (error) {
@@ -220,20 +248,19 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
           queueForLater({ kind: 'insert', id, row });
           return newTask;
         }
-        setTasks((prev) => prev.filter((t) => t.id !== id));
+        applyTasks((prev) => prev.filter((t) => t.id !== id));
         throw error;
       }
       return newTask;
     },
-    [user, queueForLater]
+    [user, queueForLater, applyTasks]
   );
 
   const updateTask = React.useCallback(
     async (id: string, patch: Partial<NewTask>) => {
-      const current = tasks.find((t) => t.id === id);
+      const current = tasksRef.current.find((t) => t.id === id);
       if (!current) return;
-      const optimistic: Task = { ...current, ...patch };
-      setTasks((prev) => prev.map((t) => (t.id === id ? optimistic : t)));
+      applyTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
       const row = taskPatchToRow(patch);
       const { error: updateError } = await supabase.from('tasks').update(row).eq('id', id);
       if (updateError) {
@@ -241,36 +268,41 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
           queueForLater({ kind: 'update', id, row });
           return;
         }
-        setTasks((prev) => prev.map((t) => (t.id === id ? current : t)));
+        // restore only the fields we optimistically changed, so a concurrent
+        // change to other fields on this task (e.g. a realtime update) isn't clobbered
+        const revertPatch = Object.fromEntries(
+          (Object.keys(patch) as (keyof NewTask)[]).map((key) => [key, current[key]])
+        );
+        applyTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...revertPatch } : t)));
         throw updateError;
       }
     },
-    [tasks, queueForLater]
+    [queueForLater, applyTasks]
   );
 
   const toggleTaskStatus = React.useCallback(
     async (id: string) => {
-      const current = tasks.find((t) => t.id === id);
+      const current = tasksRef.current.find((t) => t.id === id);
       if (!current) return;
       const nextStatus: Task['status'] = current.status === 'Completed' ? 'Pending' : 'Completed';
-      setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: nextStatus } : t)));
+      applyTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: nextStatus } : t)));
       const { error: updateError } = await supabase.from('tasks').update({ status: nextStatus }).eq('id', id);
       if (updateError) {
         if (isNetworkError(updateError)) {
           queueForLater({ kind: 'update', id, row: { status: nextStatus } });
           return;
         }
-        setTasks((prev) => prev.map((t) => (t.id === id ? current : t)));
+        applyTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: current.status } : t)));
         setError('Не удалось сохранить изменения. Проверьте подключение.');
       }
     },
-    [tasks, queueForLater]
+    [queueForLater, applyTasks]
   );
 
   const deleteTask = React.useCallback(
     async (id: string) => {
-      const removed = tasks.find((t) => t.id === id);
-      setTasks((prev) => prev.filter((t) => t.id !== id));
+      const removed = tasksRef.current.find((t) => t.id === id);
+      applyTasks((prev) => prev.filter((t) => t.id !== id));
       const { error: deleteError } = await supabase.from('tasks').delete().eq('id', id);
       if (deleteError) {
         if (isNetworkError(deleteError)) {
@@ -278,12 +310,12 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         if (removed) {
-          setTasks((prev) => (prev.some((t) => t.id === id) ? prev : [removed, ...prev]));
+          applyTasks((prev) => (prev.some((t) => t.id === id) ? prev : [removed, ...prev]));
         }
         setError('Не удалось удалить задачу. Проверьте подключение.');
       }
     },
-    [tasks, queueForLater]
+    [queueForLater, applyTasks]
   );
 
   const value = React.useMemo(

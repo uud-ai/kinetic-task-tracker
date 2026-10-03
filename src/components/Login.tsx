@@ -3,7 +3,6 @@ import { motion } from 'motion/react';
 import { LogIn, UserPlus, Mail, Lock, KeyRound } from 'lucide-react';
 import { useAuth } from '@/src/context/AuthContext';
 import { getAuthErrorMessage } from '@/src/lib/labels';
-import { seedInitialTasks } from '@/src/context/TasksContext';
 
 type Mode = 'signIn' | 'signUp' | 'forgotPassword';
 
@@ -52,10 +51,8 @@ export default function Login() {
     setSubmitting(true);
     try {
       if (mode === 'signUp') {
-        const { user, sessionActive } = await signUp(email.trim(), password);
-        if (sessionActive) {
-          await seedInitialTasks(user.id);
-        } else {
+        const { sessionActive } = await signUp(email.trim(), password);
+        if (!sessionActive) {
           setInfo(
             'Проверьте почту — мы отправили письмо для подтверждения email. Стартовые задачи появятся после первого входа.'
           );

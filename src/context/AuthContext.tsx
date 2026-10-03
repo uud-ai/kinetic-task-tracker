@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = React.useCallback(async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { needsSeed: true } } });
     if (error) throw error;
     if (!data.user) throw new Error('Регистрация не удалась.');
     return { user: data.user, sessionActive: !!data.session };
