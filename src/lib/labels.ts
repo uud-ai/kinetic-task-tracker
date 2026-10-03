@@ -18,22 +18,21 @@ export const CATEGORY_LABELS: Record<Task['category'], string> = {
   Health: 'Здоровье',
 };
 
-export function pluralizeTasks(count: number): string {
+function pluralizeRu(count: number, [one, few, many]: [string, string, string]): string {
   const mod10 = count % 10;
   const mod100 = count % 100;
-  if (mod100 >= 11 && mod100 <= 14) return 'задач';
-  if (mod10 === 1) return 'задача';
-  if (mod10 >= 2 && mod10 <= 4) return 'задачи';
-  return 'задач';
+  if (mod100 >= 11 && mod100 <= 14) return many;
+  if (mod10 === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4) return few;
+  return many;
+}
+
+export function pluralizeTasks(count: number): string {
+  return pluralizeRu(count, ['задача', 'задачи', 'задач']);
 }
 
 export function pluralizeChanges(count: number): string {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod100 >= 11 && mod100 <= 14) return 'изменений';
-  if (mod10 === 1) return 'изменение';
-  if (mod10 >= 2 && mod10 <= 4) return 'изменения';
-  return 'изменений';
+  return pluralizeRu(count, ['изменение', 'изменения', 'изменений']);
 }
 
 const AUTH_ERROR_LABELS: [match: string, label: string][] = [
