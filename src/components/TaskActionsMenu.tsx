@@ -10,9 +10,26 @@ interface TaskActionsMenuProps {
 
 export default function TaskActionsMenu({ onEdit, onDelete, className }: TaskActionsMenuProps) {
   const [open, setOpen] = React.useState(false);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const handlePointerDown = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
 
   return (
-    <div className={cn('relative', className)}>
+    <div ref={rootRef} className={cn('relative', className)}>
       <button
         onClick={(e) => {
           e.stopPropagation();
